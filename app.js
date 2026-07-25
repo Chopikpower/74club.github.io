@@ -3903,96 +3903,64 @@ init();
 
     function ensureAdminFeatureButtons() {
         ensureAdminFeatureStyles();
-        ensurePasswordModal();
-
-        const userInfo = document.querySelector('.user-info');
-
-        if (!userInfo) return;
 
         /**
-         * Эти три кнопки скрыты (display:none) по умолчанию и появляются
-         * только через updateAdminFeatureButtons() — их точное место в
-         * шапке не принципиально, поэтому просто добавляем в конец
-         * .user-info, без хрупкой привязки к соседним кнопкам.
+         * Раньше здесь создавались 3 плавающие кнопки в шапке
+         * (Изменить пароль / Сетка: показать-скрыть / Регистрация: показать-скрыть).
+         * Теперь всё это — часть панели «Редактор» (editorGuestGridToggleBtn,
+         * editorGuestRegistrationToggleBtn, обычная форма смены пароля),
+         * так админу не нужно скакать глазами по шапке на каждой странице.
          */
-        if (!document.getElementById('adminPasswordFixBtn')) {
-            const btn = document.createElement('button');
-            btn.className = 'btn';
-            btn.id = 'adminPasswordFixBtn';
-            btn.type = 'button';
-            btn.textContent = '🔐 Изменить пароль';
-            btn.style.display = 'none';
-            btn.onclick = openPasswordModal;
-
-            userInfo.appendChild(btn);
-        }
-
-        if (!document.getElementById('guestGridToggleBtn')) {
-            const btn = document.createElement('button');
-            btn.className = 'btn';
-            btn.id = 'guestGridToggleBtn';
-            btn.type = 'button';
-            btn.style.display = 'none';
-            btn.onclick = toggleGuestGridVisibility;
-
-            userInfo.appendChild(btn);
-        }
-
-        if (!document.getElementById('guestRegistrationToggleBtn')) {
-            const btn = document.createElement('button');
-            btn.className = 'btn';
-            btn.id = 'guestRegistrationToggleBtn';
-            btn.type = 'button';
-            btn.style.display = 'none';
-            btn.onclick = toggleGuestRegistrationVisibility;
-
-            userInfo.appendChild(btn);
-        }
-
+        wireEditorVisibilityToggles();
         updateAdminFeatureButtons();
     }
 
-    function updateAdminFeatureButtons() {
-        const passwordBtn = document.getElementById('adminPasswordFixBtn');
-        const toggleBtn = document.getElementById('guestGridToggleBtn');
-        const registrationToggleBtn = document.getElementById('guestRegistrationToggleBtn');
+    function wireEditorVisibilityToggles() {
+        const gridBtn = document.getElementById('editorGuestGridToggleBtn');
+        const regBtn = document.getElementById('editorGuestRegistrationToggleBtn');
 
-        const isAdmin = !!state.isAdmin;
+        if (gridBtn && !gridBtn.dataset.wired) {
+            gridBtn.dataset.wired = '1';
+            gridBtn.onclick = toggleGuestGridVisibility;
+        }
+
+        if (regBtn && !regBtn.dataset.wired) {
+            regBtn.dataset.wired = '1';
+            regBtn.onclick = toggleGuestRegistrationVisibility;
+        }
+    }
+
+    function updateAdminFeatureButtons() {
+        const toggleBtn = document.getElementById('editorGuestGridToggleBtn');
+        const registrationToggleBtn = document.getElementById('editorGuestRegistrationToggleBtn');
+
         const guestGridVisible = state.settings.guestGridVisible !== false;
         const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
 
-        if (passwordBtn) {
-            passwordBtn.style.display = isAdmin ? 'inline-block' : 'none';
-        }
-
         if (toggleBtn) {
-            toggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
             toggleBtn.classList.remove('grid-visible', 'grid-hidden');
 
             if (guestGridVisible) {
                 toggleBtn.classList.add('grid-visible');
-                toggleBtn.textContent = '👁 Сетка: Показана';
+                toggleBtn.textContent = '👁 Сетка гостям: Показана';
                 toggleBtn.title = 'Нажми, чтобы скрыть сетку от гостей';
             } else {
                 toggleBtn.classList.add('grid-hidden');
-                toggleBtn.textContent = '🙈 Сетка: Скрыта';
+                toggleBtn.textContent = '🙈 Сетка гостям: Скрыта';
                 toggleBtn.title = 'Нажми, чтобы показать сетку гостям';
             }
         }
 
         if (registrationToggleBtn) {
-            registrationToggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
             registrationToggleBtn.classList.remove('registration-visible', 'registration-hidden');
 
             if (guestRegistrationVisible) {
                 registrationToggleBtn.classList.add('registration-visible');
-                registrationToggleBtn.textContent = '👁 Регистрация: Показана';
+                registrationToggleBtn.textContent = '👁 Регистрация гостям: Показана';
                 registrationToggleBtn.title = 'Нажми, чтобы скрыть регистрацию от гостей';
             } else {
                 registrationToggleBtn.classList.add('registration-hidden');
-                registrationToggleBtn.textContent = '🙈 Регистрация: Скрыта';
+                registrationToggleBtn.textContent = '🙈 Регистрация гостям: Скрыта';
                 registrationToggleBtn.title = 'Нажми, чтобы показать регистрацию гостям';
             }
         }
