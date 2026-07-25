@@ -115,7 +115,8 @@
            Гостю показывается только маленькая строка внизу (hub-footer-auth). */
         body.on-timer:not(.is-admin) .header,
         body.on-grid:not(.is-admin) .header,
-        body.on-rules:not(.is-admin) .header {
+        body.on-rules:not(.is-admin) .header,
+        body.on-rating:not(.is-admin) .header {
             display: none !important;
         }
 
@@ -2032,22 +2033,22 @@
                     <span class="hub-tile-desc">О лиге и структуре сезона</span>
                 </button>
 
-                <button class="hub-tile hub-tile-admin hub-tile--tournament nav-btn hub-admin-only" data-page="tournamentPage" style="--i:5">
+                <button class="hub-tile hub-tile--results nav-btn" data-page="ratingPage" style="--i:5">
+                    <span class="hub-tile-icon">🏆</span>
+                    <span class="hub-tile-title">Результаты</span>
+                    <span class="hub-tile-desc">Таблица итогов текущего турнира</span>
+                </button>
+
+                <button class="hub-tile hub-tile-admin hub-tile--tournament nav-btn hub-admin-only" data-page="tournamentPage" style="--i:6">
                     <span class="hub-tile-icon">⚙️</span>
                     <span class="hub-tile-title">Турнир</span>
                     <span class="hub-tile-desc">Финальный стол, завершение</span>
                 </button>
 
-                <button class="hub-tile hub-tile-admin hub-tile--editor nav-btn hub-admin-only" data-page="editorPage" style="--i:6">
+                <button class="hub-tile hub-tile-admin hub-tile--editor nav-btn hub-admin-only" data-page="editorPage" style="--i:7">
                     <span class="hub-tile-icon">🎛</span>
                     <span class="hub-tile-title">Редактор</span>
                     <span class="hub-tile-desc">Шаблоны, звук, настройки</span>
-                </button>
-
-                <button class="hub-tile hub-tile-admin hub-tile--results nav-btn hub-admin-only" data-page="ratingPage" style="--i:7">
-                    <span class="hub-tile-icon">🏆</span>
-                    <span class="hub-tile-title">Результаты</span>
-                    <span class="hub-tile-desc">Таблица итогов турнира</span>
                 </button>
             </div>
 
