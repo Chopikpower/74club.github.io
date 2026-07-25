@@ -3120,6 +3120,7 @@ function showPage(pageId) {
     document.body.classList.toggle('on-hub', pageId === 'hubPage');
     document.body.classList.toggle('on-timer', pageId === 'timerPage');
     document.body.classList.toggle('on-grid', pageId === 'gridPage');
+    document.body.classList.toggle('on-rules', pageId === 'rulesPage');
 
     ensureRulesPage();
     ensureTournamentPage();
