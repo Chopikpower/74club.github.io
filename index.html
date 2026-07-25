@@ -70,13 +70,17 @@
             display: none !important;
         }
 
+        body.on-hub #homeNavBtn {
+            display: none !important;
+        }
+
         body.on-hub .header #userRole,
         body.on-hub .header #loginBtn,
         body.on-hub .header #logoutBtn {
             display: none !important;
         }
 
-        body.on-hub .hub-footer-auth {
+        .hub-footer-auth {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -87,8 +91,7 @@
             opacity: 0.85;
         }
 
-        body.on-hub .hub-footer-auth #hubLoginBtn,
-        body.on-hub .hub-footer-auth #hubLogoutBtn {
+        .hub-footer-auth button {
             font-size: 12px;
             padding: 6px 14px;
             background: rgba(255,255,255,0.08);
@@ -98,15 +101,26 @@
             font-weight: 400;
         }
 
-        body.on-hub .hub-footer-auth #hubLoginBtn:hover,
-        body.on-hub .hub-footer-auth #hubLogoutBtn:hover {
+        .hub-footer-auth button:hover {
             background: rgba(255,255,255,0.14);
             color: rgba(232,199,102,0.85);
         }
 
-        body.on-hub .hub-footer-auth .user-role {
+        .hub-footer-auth .user-role {
             font-size: 12px;
             opacity: 0.6;
+        }
+
+        /* Полная шапка видна только админу на страницах таймера/сетки/правил.
+           Гостю показывается только маленькая строка внизу (hub-footer-auth). */
+        body.on-timer:not(.is-admin) .header,
+        body.on-grid:not(.is-admin) .header,
+        body.on-rules:not(.is-admin) .header {
+            display: none !important;
+        }
+
+        body.on-timer.is-admin #timerFooterAuth {
+            display: none !important;
         }
 
         body.on-hub .header {
@@ -1963,7 +1977,7 @@
         <div class="user-info">
     	<span class="user-role" id="userRole"> </span>
 
-    	<button class="btn nav-btn" data-page="hubPage">🏠 Главная</button>
+    	<button class="btn nav-btn" id="homeNavBtn" data-page="hubPage">🏠 Главная</button>
 
     	<div class="header-nav-group" id="headerNavGroup">
     	<button class="btn" id="leagueBtn" onclick="window.location.href='League.html'">♠ Лига 4покеристов</button>
@@ -2095,6 +2109,13 @@
                     <div class="stat-label">Статус</div>
                     <div class="stat-value" id="timerStatus">Готов</div>
                 </div>
+            </div>
+
+            <div class="hub-footer-auth" id="timerFooterAuth">
+                <button class="btn nav-btn" data-page="hubPage">🏠 На главную</button>
+                <span class="user-role" id="timerFooterRole"> </span>
+                <button class="btn" id="timerFooterLoginBtn">Вход для админа</button>
+                <button class="btn" id="timerFooterLogoutBtn" style="display:none;">Выход</button>
             </div>
         </div>
     </div>
@@ -2321,6 +2342,7 @@
                 </div>
                 <button class="btn btn-success" id="gridGuestRegisterBtn" style="display:none;">📝 Зарегистрироваться</button>
                 <button class="btn btn-warning nav-btn" data-page="rulesPage">📜 Правила</button>
+                <button class="btn btn-secondary nav-btn" data-page="timerPage">⏱ На таймер</button>
                 <button class="btn btn-secondary nav-btn" data-page="hubPage">← На главную</button>
             </div>
 
