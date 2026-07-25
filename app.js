@@ -3141,6 +3141,7 @@ function showPage(pageId) {
     document.body.classList.toggle('on-timer', pageId === 'timerPage');
     document.body.classList.toggle('on-grid', pageId === 'gridPage');
     document.body.classList.toggle('on-rules', pageId === 'rulesPage');
+    document.body.classList.toggle('on-rating', pageId === 'ratingPage');
 
     ensureRulesPage();
     ensureTournamentPage();
