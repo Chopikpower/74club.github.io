@@ -1631,6 +1631,26 @@ function markEliminated(id) {
             if (p.id === id) p.eliminated = true;
         });
     });
+
+    /**
+     * Если после этого выбывания остался ровно один активный игрок —
+     * турнир автоматически завершается, и этот игрок занимает 1 место.
+     */
+    const stillActive = state.grid.players.filter(p => !p.eliminated);
+
+    if (stillActive.length === 1 && !state.grid.tournamentEnded) {
+        const winner = stillActive[0];
+        winner.eliminated = true;
+        state.grid.eliminationOrder.push(winner.id);
+
+        state.grid.tables.forEach(t => {
+            t.players.forEach(p => {
+                if (p.id === winner.id) p.eliminated = true;
+            });
+        });
+
+        state.grid.tournamentEnded = true;
+    }
 }
 
 function createFinalTable() {
@@ -1824,7 +1844,7 @@ function getPlayersWithPlaces() {
     const eliminated = result.filter(p => p.eliminated);
 
     eliminated.sort((a, b) => {
-        return state.grid.eliminationOrder.indexOf(b.id) - state.grid.eliminationOrder.indexOf(a.id);
+        return state.grid.eliminationOrder.indexOf(a.id) - state.grid.eliminationOrder.indexOf(b.id);
     });
 
     eliminated.forEach((p, index) => {
