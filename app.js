@@ -3195,6 +3195,8 @@ function updateAdminUI() {
         show($('timerControls'), 'flex');
         show($('progressContainer'));
         show($('playerRegistrationSection'), 'block');
+        show($('playerRegistrationAdminControls'), 'block');
+        show($('playerRegistrationAdminControls2'), 'block');
         show($('saveRatingJpgBtn'), 'inline-block');
     } else {
         hide($('editorBtn'));
@@ -3208,7 +3210,11 @@ function updateAdminUI() {
 
         hide($('timerControls'));
         hide($('progressContainer'));
-        hide($('playerRegistrationSection'));
+        // Список участников остаётся виден гостю (только на чтение) —
+        // скрываем лишь форму добавления и кнопку создания сетки.
+        show($('playerRegistrationSection'), 'block');
+        hide($('playerRegistrationAdminControls'));
+        hide($('playerRegistrationAdminControls2'));
         hide($('saveRatingJpgBtn'));
     }
 
@@ -3304,6 +3310,19 @@ function resetAll() {
     }
     if ($('gridGuestRegisterBtn')) {
         $('gridGuestRegisterBtn').onclick = () => openRegistrationEntry();
+    }
+
+    if ($('gridRulesPeekBtn')) {
+        $('gridRulesPeekBtn').onclick = () => {
+            $('gridRulesPeekText').textContent = state.rules.text || 'Правила пока не заполнены администратором.';
+            $('gridRulesPeekModal').classList.add('active');
+        };
+    }
+
+    if ($('gridRulesPeekCloseBtn')) {
+        $('gridRulesPeekCloseBtn').onclick = () => {
+            $('gridRulesPeekModal').classList.remove('active');
+        };
     }
     $('cancelLoginBtn').onclick = () => $('loginModal').classList.remove('active');
 
