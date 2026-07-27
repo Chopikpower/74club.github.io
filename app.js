@@ -4011,44 +4011,31 @@ init();
      ************************************************************/
 
     function applyGuestGridVisibility() {
-        const gridBtn = document.getElementById('gridBtn');
-        const gridPage = document.getElementById('gridPage');
+        const tablesContainer = document.getElementById('tablesContainer');
+        const finalTableSection = document.getElementById('finalTableSection');
 
         const guestGridVisible = state.settings.guestGridVisible !== false;
 
         /**
-         * Админ всегда видит сетку.
+         * Админ всегда видит столы.
          */
         if (state.isAdmin) {
-            if (gridBtn) gridBtn.style.display = 'inline-block';
-            if (gridPage) gridPage.dataset.guestHidden = '0';
+            if (tablesContainer) tablesContainer.style.display = '';
+            if (finalTableSection) finalTableSection.style.removeProperty('display');
             return;
         }
 
         /**
-         * Гость.
+         * Гость. Этот переключатель скрывает только сами столы/рассадку —
+         * список участников и регистрация от него не зависят,
+         * ими управляет отдельный переключатель «Регистрация гостям».
+         * Страница «Сетка» при этом остаётся доступной гостю всегда.
          */
         if (guestGridVisible) {
-            if (gridBtn) gridBtn.style.display = 'inline-block';
-            if (gridPage) gridPage.dataset.guestHidden = '0';
+            if (tablesContainer) tablesContainer.style.display = '';
         } else {
-            if (gridBtn) gridBtn.style.display = 'none';
-            if (gridPage) gridPage.dataset.guestHidden = '1';
-
-            /**
-             * Если гость уже находится на странице сетки,
-             * отправляем его обратно на таймер.
-             */
-            if (state.currentPage === 'gridPage') {
-                if (typeof showPage === 'function') {
-                    showPage('timerPage');
-                } else {
-                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                    const timerPage = document.getElementById('timerPage');
-                    if (timerPage) timerPage.classList.add('active');
-                    state.currentPage = 'timerPage';
-                }
-            }
+            if (tablesContainer) tablesContainer.style.display = 'none';
+            if (finalTableSection) finalTableSection.style.display = 'none';
         }
     }
 
