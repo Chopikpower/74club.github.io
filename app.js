@@ -1463,7 +1463,7 @@ function renderTables() {
     const active = state.grid.players.filter(p => !p.eliminated).length;
 
     if ($('finalTableSection')) {
-        $('finalTableSection').style.display = state.isAdmin && active >= 1 ? 'block' : 'none';
+        $('finalTableSection').style.display = state.isAdmin && state.grid.players.length > 0 ? 'block' : 'none';
     }
 }
 
