@@ -4016,16 +4016,18 @@ init();
 
     function applyGuestGridVisibility() {
         const tablesContainer = document.getElementById('tablesContainer');
-        const finalTableSection = document.getElementById('finalTableSection');
 
         const guestGridVisible = state.settings.guestGridVisible !== false;
 
         /**
          * Админ всегда видит столы.
+         * Видимость finalTableSection (Финальный стол/Завершить/Очистить)
+         * управляется отдельно в renderTables() по количеству активных
+         * игроков — трогать её здесь не нужно, чтобы не было гонки
+         * состояний между двумя функциями.
          */
         if (state.isAdmin) {
             if (tablesContainer) tablesContainer.style.display = '';
-            if (finalTableSection) finalTableSection.style.removeProperty('display');
             return;
         }
 
@@ -4039,7 +4041,6 @@ init();
             if (tablesContainer) tablesContainer.style.display = '';
         } else {
             if (tablesContainer) tablesContainer.style.display = 'none';
-            if (finalTableSection) finalTableSection.style.display = 'none';
         }
     }
 
@@ -4222,33 +4223,11 @@ init();
     }
 
     /************************************************************
-     * PATCH showPage
-     *
-     * Если гость вручную попытается открыть #gridPage,
-     * а сетка скрыта — не пустим.
+     * (Старый патч showPage, блокировавший вход гостя в сетку,
+     * убран — теперь страница «Сетка» всегда доступна гостю,
+     * видимость столов регулируется отдельно через
+     * applyGuestGridVisibility()/tablesContainer.)
      ************************************************************/
-
-    if (typeof showPage === 'function' && !window.__ADMIN_FEATURES_SHOW_PAGE_PATCHED__) {
-        window.__ADMIN_FEATURES_SHOW_PAGE_PATCHED__ = true;
-
-        const originalShowPage = showPage;
-
-        showPage = function (pageId) {
-            const guestGridVisible = state.settings.guestGridVisible !== false;
-
-            if (!state.isAdmin && pageId === 'gridPage' && !guestGridVisible) {
-                alert('Сетка сейчас скрыта админом');
-                pageId = 'timerPage';
-            }
-
-            originalShowPage(pageId);
-
-            applyGuestGridVisibility();
-            updateAdminFeatureButtons();
-        };
-
-        window.showPage = showPage;
-    }
 
     /************************************************************
      * PATCH openRegistrationEntry
