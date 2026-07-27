@@ -3372,6 +3372,10 @@ function resetAll() {
     $('createFinalTableBtn').onclick = createFinalTable;
     $('endTournamentBtn').onclick = endTournament;
 
+    if ($('clearForNextTournamentBtn')) {
+        $('clearForNextTournamentBtn').onclick = clearTournamentPlayers;
+    }
+
     $('confirmMoveBtn').onclick = confirmMovePlayer;
     $('cancelMoveBtn').onclick = () => $('movePlayerModal').classList.remove('active');
     $('closePlayerActionBtn').onclick = () => $('playerActionModal').classList.remove('active');
