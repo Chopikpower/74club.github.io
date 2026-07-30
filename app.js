@@ -1209,6 +1209,8 @@ function renderPlayerList() {
     const list = $('playerList');
     if (!list) return;
 
+    applyRegistrationLimitUI();
+
     list.innerHTML = '';
 
     state.grid.players.forEach((p, index) => {
@@ -1616,6 +1618,26 @@ function eliminateFromTable(tableId) {
     renderTables();
     renderRating();
     saveGridData();
+}
+
+function applyRegistrationLimitUI() {
+    const btn = document.getElementById('gridGuestRegisterBtn');
+    if (!btn || state.isAdmin) return;
+
+    const limit = Number(state.tournament.registrationLimit) || 0;
+    const reached = limit > 0 && state.grid.players.length >= limit;
+
+    if (reached) {
+        btn.disabled = true;
+        btn.textContent = '🚫 Лимит регистрации исчерпан';
+        btn.style.opacity = '0.6';
+        btn.style.cursor = 'not-allowed';
+    } else {
+        btn.disabled = false;
+        btn.textContent = '📝 Зарегистрироваться';
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+    }
 }
 
 function markEliminated(id) {
@@ -2079,6 +2101,13 @@ function addRegistrationButton() {
 }
 
 function openRegistrationEntry() {
+    const limit = Number(state.tournament.registrationLimit) || 0;
+
+    if (limit > 0 && state.grid.players.length >= limit) {
+        alert('Лимит регистрации исчерпан (' + limit + ' участников). Обратитесь к администратору турнира.');
+        return;
+    }
+
     renderRegistrationAgreement();
     $('registrationAgreementModal').classList.add('active');
 }
@@ -2164,6 +2193,14 @@ function acceptRegistrationAgreement() {
 }
 
 function submitRegistration() {
+    const limit = Number(state.tournament.registrationLimit) || 0;
+
+    if (limit > 0 && state.grid.players.length >= limit) {
+        alert('Лимит регистрации исчерпан (' + limit + ' участников). Обратитесь к администратору турнира.');
+        $('registrationFormModal').classList.remove('active');
+        return;
+    }
+
     const nameInput = $('registrationPlayerName');
     const name = nameInput.value.trim();
 
@@ -2649,6 +2686,11 @@ function renderTournamentOverview() {
                     <label>Игроков за столом</label>
                     <input type="number" id="tournamentMaxPlayersInput" value="${Number(state.grid.maxPlayersPerTable || state.tournament.maxPlayersPerTable || 6)}" min="2" max="12">
                 </div>
+
+                <div class="form-group">
+                    <label>Лимит регистрации (0 — без лимита)</label>
+                    <input type="number" id="tournamentRegistrationLimitInput" value="${Number(state.tournament.registrationLimit || 0)}" min="0">
+                </div>
             </div>
 
             <div class="tournament-actions">
@@ -2665,6 +2707,7 @@ function saveTournamentMainSettings() {
     state.tournament.date = $('tournamentDateInput').value;
     state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 500;
     state.tournament.maxPlayersPerTable = parseInt($('tournamentMaxPlayersInput').value) || 6;
+    state.tournament.registrationLimit = parseInt($('tournamentRegistrationLimitInput').value) || 0;
 
     state.grid.maxPlayersPerTable = state.tournament.maxPlayersPerTable;
 
@@ -2674,6 +2717,8 @@ function saveTournamentMainSettings() {
 
     saveSettingsData();
     saveGridData();
+
+    applyRegistrationLimitUI();
 
     alert('Настройки турнира сохранены');
     renderTournamentPage('overview');
@@ -4071,6 +4116,7 @@ init();
         if (guestRegistrationVisible) {
             if (registrationBtn) registrationBtn.style.display = 'inline-block';
             if (gridRegisterBtn) gridRegisterBtn.style.display = 'inline-block';
+            applyRegistrationLimitUI();
         } else {
             if (registrationBtn) registrationBtn.style.display = 'none';
             if (gridRegisterBtn) gridRegisterBtn.style.display = 'none';
