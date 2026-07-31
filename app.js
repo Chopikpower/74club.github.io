@@ -1391,14 +1391,14 @@ function calculateSeatSize(name) {
 function calculateSymmetricSeatPositions(totalSeats) {
     const positions = [];
     const angleStep = (2 * Math.PI) / totalSeats;
-    const startAngle = -Math.PI / 2 - Math.PI / 15; // место №1 слегка сдвинуто влево от центра верхней дуги
+    const startAngle = -Math.PI / 2 - Math.PI / 8; // место №1 сдвинуто левее от центра верхней дуги
 
     for (let i = 0; i < totalSeats; i++) {
         const angle = startAngle + i * angleStep;
 
         positions.push({
-            x: 50 + 44 * Math.cos(angle),
-            y: 50 + 44 * Math.sin(angle)
+            x: 50 + 46 * Math.cos(angle),
+            y: 50 + 46 * Math.sin(angle)
         });
     }
 
