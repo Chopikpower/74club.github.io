@@ -836,8 +836,17 @@
 
         .player-list {
             margin: 20px 0;
-            max-height: 300px;
+            max-height: 2000px;
             overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+
+        .player-list.collapsed {
+            max-height: 190px;
+        }
+
+        .player-list.expanded {
+            max-height: 2000px;
         }
 
         .player-item {
@@ -2362,7 +2371,10 @@
             </div>
 
             <div class="player-registration" id="playerRegistrationSection">
-                <h3>📝 Участники</h3>
+                <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                    <span>📝 Участники</span>
+                    <button class="btn btn-secondary" id="participantListToggleBtn" style="font-size:12px; padding:6px 14px;">▲ Свернуть список</button>
+                </h3>
 
                 <div id="playerRegistrationAdminControls" style="display:none;">
                     <div class="form-row">
