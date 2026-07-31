@@ -28,6 +28,11 @@ let tournamentIdV2 = null;
 const state = {
     isAdmin: false,
     currentPage: 'timerPage',
+
+    ui: {
+        participantListManualOverride: null
+    },
+
 	tournament: {
 	    name: 'Покерный турнир',
 	    date: '',
@@ -1210,6 +1215,7 @@ function renderPlayerList() {
     if (!list) return;
 
     applyRegistrationLimitUI();
+    applyParticipantListCollapseState();
 
     list.innerHTML = '';
 
@@ -1320,6 +1326,7 @@ function createGrid() {
     }
 
     state.grid.gridCreated = true;
+    state.ui.participantListManualOverride = null;
 
     show($('addPlayerAfterGridSection'), 'block');
 
@@ -1618,6 +1625,71 @@ function eliminateFromTable(tableId) {
     renderTables();
     renderRating();
     saveGridData();
+}
+
+let participantListAutoCollapseTimer = null;
+
+/**
+ * Правила сворачивания списка участников:
+ * 1) Гость, сетка скрыта админом -> список всегда развёрнут полностью.
+ * 2) Столы уже созданы, ручного переопределения нет -> список свёрнут по умолчанию.
+ * 3) Регистрация ещё идёт (столов нет), ручного переопределения нет -> список развёрнут.
+ * 4) Кнопка "Свернуть/Развернуть" — ручное переопределение (participantListManualOverride),
+ *    действует поверх правил выше, пока его не сбросит новое создание сетки.
+ * 5) Если список развёрнут (по любой причине, кроме правила 1) и столы уже
+ *    созданы — через 600 секунд сворачивается автоматически.
+ */
+function computeParticipantListExpanded() {
+    const gridCreated = !!state.grid.gridCreated;
+    const guestGridVisible = state.settings.guestGridVisible !== false;
+
+    if (!state.isAdmin && !guestGridVisible) return true;
+
+    const override = state.ui.participantListManualOverride;
+    if (override === true || override === false) return override;
+
+    return !gridCreated;
+}
+
+function applyParticipantListCollapseState() {
+    const list = document.getElementById('playerList');
+    const toggleBtn = document.getElementById('participantListToggleBtn');
+    if (!list) return;
+
+    const gridCreated = !!state.grid.gridCreated;
+    const guestGridVisible = state.settings.guestGridVisible !== false;
+    const forcedExpanded = !state.isAdmin && !guestGridVisible;
+
+    const expanded = computeParticipantListExpanded();
+
+    list.classList.toggle('collapsed', !expanded);
+    list.classList.toggle('expanded', expanded);
+
+    if (toggleBtn) {
+        if (forcedExpanded) {
+            toggleBtn.style.display = 'none';
+        } else {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = expanded ? '▲ Свернуть список' : '▼ Развернуть список';
+        }
+    }
+
+    if (participantListAutoCollapseTimer) {
+        clearTimeout(participantListAutoCollapseTimer);
+        participantListAutoCollapseTimer = null;
+    }
+
+    if (!forcedExpanded && expanded && gridCreated) {
+        participantListAutoCollapseTimer = setTimeout(() => {
+            state.ui.participantListManualOverride = false;
+            applyParticipantListCollapseState();
+        }, 600000);
+    }
+}
+
+function toggleParticipantList() {
+    state.ui.participantListManualOverride = !computeParticipantListExpanded();
+    applyParticipantListCollapseState();
 }
 
 function applyRegistrationLimitUI() {
@@ -2981,6 +3053,7 @@ function clearTournamentPlayers() {
     state.grid.gridCreated = false;
     state.grid.eliminationOrder = [];
     state.grid.tournamentEnded = false;
+    state.ui.participantListManualOverride = null;
 
     saveGridData();
     renderPlayerList();
@@ -3355,6 +3428,10 @@ function resetAll() {
     }
     if ($('gridGuestRegisterBtn')) {
         $('gridGuestRegisterBtn').onclick = () => openRegistrationEntry();
+    }
+
+    if ($('participantListToggleBtn')) {
+        $('participantListToggleBtn').onclick = () => toggleParticipantList();
     }
 
     if ($('gridRulesPeekBtn')) {
