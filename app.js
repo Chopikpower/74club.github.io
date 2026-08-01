@@ -1397,8 +1397,8 @@ function calculateSymmetricSeatPositions(totalSeats) {
         const angle = startAngle + i * angleStep;
 
         positions.push({
-            x: 50 + 46 * Math.cos(angle),
-            y: 50 + 46 * Math.sin(angle)
+            x: 50 + 49 * Math.cos(angle),
+            y: 50 + 42 * Math.sin(angle)
         });
     }
 
