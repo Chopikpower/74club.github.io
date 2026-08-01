@@ -1389,16 +1389,83 @@ function calculateSeatSize(name) {
 }
 
 function calculateSymmetricSeatPositions(totalSeats) {
+    /**
+     * Стол имеет форму "стадиона" — прямые верх/низ и полукруглые
+     * скругления по бокам, а не идеальный овал. Поэтому вместо
+     * формулы окружности/эллипса ведём точку прямо по контуру
+     * стола: по прямым участкам линейно, по скруглениям — дугой.
+     * Так фишки точно ложатся на край при любом числе игроков.
+     */
     const positions = [];
-    const angleStep = (2 * Math.PI) / totalSeats;
-    const startAngle = -Math.PI / 2 - Math.PI / 8; // место №1 сдвинуто левее от центра верхней дуги
+
+    const H = 0.4837;      // высота картинки стола относительно ширины (контейнер настроен под неё же)
+    const r = H / 2;        // радиус скруглений = половина высоты стола
+    const half = 0.5 - r;   // длина половины прямого участка (сверху/снизу) в единицах ширины (0..1)
+    const capArc = Math.PI * r; // длина дуги одного скругления (половина окружности)
+    const perimeter = 4 * half + 2 * capArc;
+
+    // Место №1 сдвинуто левее середины верхней стороны стола.
+    const leftShift = 0.075;
+    let s0 = -leftShift;
+    while (s0 < 0) s0 += perimeter;
+
+    const step = perimeter / totalSeats;
+
+    // Небольшой вынос мест наружу за пределы контура (фишки чуть
+    // выступают за рельс стола, как в жизни), в тех же единицах.
+    const outset = 0.012;
+
+    function pointAtArcLength(s) {
+        s = ((s % perimeter) + perimeter) % perimeter;
+
+        // 1) верхняя правая прямая: от центра верха вправо до касания с правым скруглением
+        if (s < half) {
+            return { x: 0.5 + s, y: -outset };
+        }
+        s -= half;
+
+        // 2) правое скругление (дуга сверху вниз, выпуклость вправо)
+        if (s < capArc) {
+            const theta = -Math.PI / 2 + s / r;
+            return {
+                x: (1 - r) + (r + outset) * Math.cos(theta),
+                y: H / 2 + (r + outset) * Math.sin(theta)
+            };
+        }
+        s -= capArc;
+
+        // 3) нижняя правая прямая: от правого скругления к центру низа
+        if (s < half) {
+            return { x: (1 - r) - s, y: H + outset };
+        }
+        s -= half;
+
+        // 4) нижняя левая прямая: от центра низа к левому скруглению
+        if (s < half) {
+            return { x: 0.5 - s, y: H + outset };
+        }
+        s -= half;
+
+        // 5) левое скругление (дуга снизу вверх, выпуклость влево)
+        if (s < capArc) {
+            const theta = Math.PI / 2 + s / r;
+            return {
+                x: r + (r + outset) * Math.cos(theta),
+                y: H / 2 + (r + outset) * Math.sin(theta)
+            };
+        }
+        s -= capArc;
+
+        // 6) верхняя левая прямая: от левого скругления к центру верха
+        return { x: (r) + s, y: -outset };
+    }
 
     for (let i = 0; i < totalSeats; i++) {
-        const angle = startAngle + i * angleStep;
+        const p = pointAtArcLength(s0 + i * step);
 
         positions.push({
-            x: 50 + 49 * Math.cos(angle),
-            y: 50 + 42 * Math.sin(angle)
+            x: p.x * 100,
+            y: (p.y / H) * 100
         });
     }
 
