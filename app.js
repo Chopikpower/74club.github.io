@@ -7,8 +7,8 @@
  * SUPABASE
  ************************************************************/
 
-const SUPABASE_URL = 'https://ivvzrjnutuyoqtlzpbqx.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2dnpyam51dHV5b3F0bHpwYnF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjY2NzQsImV4cCI6MjA5ODQwMjY3NH0.haUuHEhGrBCQ5xflu_l-dKmFRMs_r-Qo3rlCSzvec4I';
+const SUPABASE_URL = 'https://db.74club.ru';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg1ODgxNDcyLCJleHAiOjIxMDEyNDE0NzJ9.M9G0zSzyka8Ib8L5XxtQMZ4aU3GXl6trbr2pk2SkBCI';
 
 // Единственный админ входит через Supabase Auth (email+пароль).
 // В UI остаётся только поле пароля, email зашит здесь.
