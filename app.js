@@ -85,7 +85,10 @@ const state = {
                 { level: 20, sb: 12000, bb: 25000, ante: 25000 },
                 { level: 21, sb: 15000, bb: 30000, ante: 30000 },
                 { level: 22, sb: 20000, bb: 40000, ante: 40000 },
-                { level: 23, sb: 25000, bb: 50000, ante: 50000 }
+                { level: 23, sb: 25000, bb: 50000, ante: 50000 },
+				{ level: 24, sb: 30000, bb: 60000, ante: 60000 },
+				{ level: 25, sb: 40000, bb: 80000, ante: 80000 },
+				{ level: 26, sb: 50000, bb: 100000, ante: 100000 }
             ]
         }
     },
