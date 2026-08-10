@@ -1385,7 +1385,7 @@ function sortTablePlayers(table) {
 }
 
 function calculateSeatSize(name) {
-    return 95;
+    return Math.min(80 + Math.floor(String(name).length / 3) * 5, 120);
 }
 
 const SEAT_PRESETS = {
@@ -1509,7 +1509,7 @@ function renderTables() {
         tableDiv.className = 'poker-table';
 
         tableDiv.innerHTML = `
-            <div class="table-header">Стол ${table.id} - ${table.players.length} участников</div>
+            <div class="table-header">Стол ${table.id}</div>
             <div class="table-oval-container">
                 ${table.id === 'Финальный' ? `<div class="final-table-label">ФИНАЛ</div>` : ''}
                 <div class="table-oval ${table.id === 'Финальный' ? 'final-table' : ''}"></div>
