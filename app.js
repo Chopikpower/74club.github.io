@@ -85,10 +85,7 @@ const state = {
                 { level: 20, sb: 12000, bb: 25000, ante: 25000 },
                 { level: 21, sb: 15000, bb: 30000, ante: 30000 },
                 { level: 22, sb: 20000, bb: 40000, ante: 40000 },
-                { level: 23, sb: 25000, bb: 50000, ante: 50000 },
-				{ level: 24, sb: 30000, bb: 60000, ante: 60000 },
-				{ level: 25, sb: 40000, bb: 80000, ante: 80000 },
-				{ level: 26, sb: 50000, bb: 100000, ante: 100000 }
+                { level: 23, sb: 25000, bb: 50000, ante: 50000 }
             ]
         }
     },
@@ -1388,21 +1385,108 @@ function sortTablePlayers(table) {
 }
 
 function calculateSeatSize(name) {
-    return 76;
+    return Math.min(80 + Math.floor(String(name).length / 3) * 5, 120);
 }
 
+const SEAT_PRESETS = {
+    2: [
+        { x: 3, y: 50 }, { x: 97, y: 50 }
+    ],
+    3: [
+        { x: 50, y: -2 }, { x: 97, y: 50 }, { x: 3, y: 50 }
+    ],
+    4: [
+        { x: 30, y: -2 }, { x: 70, y: -2 },
+        { x: 70, y: 102 }, { x: 30, y: 102 }
+    ],
+    5: [
+        { x: 50, y: -2 }, { x: 97, y: 50 },
+        { x: 70, y: 102 }, { x: 30, y: 102 }, { x: 3, y: 50 }
+    ],
+    6: [
+        { x: 30, y: -2 }, { x: 70, y: -2 },
+        { x: 97, y: 50 },
+        { x: 70, y: 102 }, { x: 30, y: 102 },
+        { x: 3, y: 50 }
+    ],
+    7: [
+        { x: 22, y: -2 }, { x: 50, y: -2 }, { x: 78, y: -2 },
+        { x: 97, y: 50 },
+        { x: 65, y: 102 }, { x: 35, y: 102 },
+        { x: 3, y: 50 }
+    ],
+    8: [
+        { x: 18, y: -2 }, { x: 50, y: -2 }, { x: 82, y: -2 },
+        { x: 97, y: 50 },
+        { x: 82, y: 102 }, { x: 50, y: 102 }, { x: 18, y: 102 },
+        { x: 3, y: 50 }
+    ],
+    9: [
+        { x: 15, y: -2 }, { x: 38, y: -2 }, { x: 62, y: -2 }, { x: 85, y: -2 },
+        { x: 97, y: 50 },
+        { x: 70, y: 102 }, { x: 30, y: 102 },
+        { x: 3, y: 50 }, { x: 3, y: 15 }
+    ],
+    10: [
+        { x: 15, y: -2 }, { x: 38, y: -2 }, { x: 62, y: -2 }, { x: 85, y: -2 },
+        { x: 97, y: 50 },
+        { x: 85, y: 102 }, { x: 62, y: 102 }, { x: 38, y: 102 }, { x: 15, y: 102 },
+        { x: 3, y: 50 }
+    ]
+};
+
 function calculateSymmetricSeatPositions(totalSeats) {
+    if (SEAT_PRESETS[totalSeats]) {
+        return SEAT_PRESETS[totalSeats];
+    }
+
+    /**
+     * Для нестандартного числа мест (11+) — ведём точку по контуру
+     * стола (прямые верх/низ + дуги скруглений), тот же принцип,
+     * что и в готовых раскладках выше, просто вычисляется на лету.
+     */
     const positions = [];
-    const angleStep = (2 * Math.PI) / totalSeats;
-    const startAngle = -Math.PI / 2 - Math.PI / 8; // место №1 сдвинуто левее от центра верхней дуги
+
+    const H = 0.4837;
+    const r = H / 2;
+    const half = 0.5 - r;
+    const capArc = Math.PI * r;
+    const perimeter = 4 * half + 2 * capArc;
+
+    const s0 = 0;
+    const step = perimeter / totalSeats;
+    const outset = 0.012;
+
+    function pointAtArcLength(s) {
+        s = ((s % perimeter) + perimeter) % perimeter;
+
+        if (s < half) return { x: 0.5 + s, y: -outset };
+        s -= half;
+
+        if (s < capArc) {
+            const theta = -Math.PI / 2 + s / r;
+            return { x: (1 - r) + (r + outset) * Math.cos(theta), y: H / 2 + (r + outset) * Math.sin(theta) };
+        }
+        s -= capArc;
+
+        if (s < half) return { x: (1 - r) - s, y: H + outset };
+        s -= half;
+
+        if (s < half) return { x: 0.5 - s, y: H + outset };
+        s -= half;
+
+        if (s < capArc) {
+            const theta = Math.PI / 2 + s / r;
+            return { x: r + (r + outset) * Math.cos(theta), y: H / 2 + (r + outset) * Math.sin(theta) };
+        }
+        s -= capArc;
+
+        return { x: r + s, y: -outset };
+    }
 
     for (let i = 0; i < totalSeats; i++) {
-        const angle = startAngle + i * angleStep;
-
-        positions.push({
-            x: 50 + 49 * Math.cos(angle),
-            y: 50 + 42 * Math.sin(angle)
-        });
+        const p = pointAtArcLength(s0 + i * step);
+        positions.push({ x: p.x * 100, y: (p.y / H) * 100 });
     }
 
     return positions;
