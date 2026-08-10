@@ -1385,7 +1385,7 @@ function sortTablePlayers(table) {
 }
 
 function calculateSeatSize(name) {
-    return Math.min(80 + Math.floor(String(name).length / 3) * 5, 120);
+    return 95;
 }
 
 const SEAT_PRESETS = {
