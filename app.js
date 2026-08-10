@@ -1389,7 +1389,7 @@ function calculateSeatSize(name) {
 }
 
 const SEAT_PRESETS = {
-        2: [
+    2: [
         { x: 5, y: 50 }, { x: 95, y: 50 }
     ],
     3: [
