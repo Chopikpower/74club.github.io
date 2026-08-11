@@ -1387,7 +1387,7 @@ function sortTablePlayers(table) {
 function calculateSeatSize(name) {
     const w = window.innerWidth;
 
-    if (w <= 480) return 52;
+    if (w <= 480) return 58;
     if (w <= 768) return 68;
     return 90;
 }
