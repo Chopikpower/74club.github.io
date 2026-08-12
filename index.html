@@ -1015,6 +1015,70 @@
             margin-bottom: 20px;
         }
 
+        /* ===================== Монетка ===================== */
+
+        .coin-flip-scene {
+            perspective: 800px;
+            display: flex;
+            justify-content: center;
+            margin: 30px 0 20px;
+        }
+
+        .coin-flip-coin {
+            width: 130px;
+            height: 130px;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateY(0deg);
+        }
+
+        .coin-flip-coin.spinning {
+            transition: transform 2.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .coin-flip-face {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            background: var(--card-bg);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .coin-flip-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .coin-flip-back {
+            transform: rotateY(180deg);
+        }
+
+        .coin-flip-result {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-color);
+            min-height: 28px;
+            margin-bottom: 10px;
+        }
+
+        /* ===================== Случайное число ===================== */
+
+        .random-number-result {
+            font-size: 56px;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin: 20px 0;
+            min-height: 68px;
+            text-shadow: 0 0 20px rgba(212,175,55,0.5);
+        }
+
         .final-table-btn {
             padding: 18px 50px;
             font-size: 18px;
@@ -2366,6 +2430,8 @@
                 </div>
                 <button class="btn btn-success" id="gridGuestRegisterBtn" style="display:none;">📝 Зарегистрироваться</button>
                 <button class="btn btn-warning" id="gridRulesPeekBtn">📜 Правила</button>
+                <button class="btn" id="coinFlipOpenBtn">🪙 Монетка</button>
+                <button class="btn" id="randomNumberOpenBtn">🎲 Число</button>
                 <button class="btn btn-secondary nav-btn" data-page="timerPage">⏱ На таймер</button>
                 <button class="btn btn-secondary nav-btn" data-page="hubPage">← На главную</button>
             </div>
@@ -2437,6 +2503,50 @@
                 <div id="gridRulesPeekText" style="white-space:pre-wrap; max-height:50vh; overflow-y:auto; padding:10px 0; color:var(--text-color);"></div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" id="gridRulesPeekCloseBtn">✖ Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="coinFlipModal">
+            <div class="modal-content" style="max-width:420px; text-align:center;">
+                <div class="modal-header">🪙 Бросание монетки</div>
+
+                <div class="coin-flip-scene">
+                    <div class="coin-flip-coin" id="coinFlipCoin">
+                        <div class="coin-flip-face coin-flip-front"><img src="img/coin-heads.png" alt="Орёл" class="coin-flip-img"></div>
+                        <div class="coin-flip-face coin-flip-back"><img src="img/coin-tails.png" alt="Решка" class="coin-flip-img"></div>
+                    </div>
+                </div>
+
+                <div class="coin-flip-result" id="coinFlipResultText">Нажми «Бросить», чтобы узнать результат</div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="coinFlipThrowBtn">🪙 Бросить монетку</button>
+                    <button class="btn btn-secondary" id="coinFlipCloseBtn">✖ Закрыть</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="randomNumberModal">
+            <div class="modal-content" style="max-width:420px; text-align:center;">
+                <div class="modal-header">🎲 Случайное число</div>
+
+                <div class="form-row" style="margin-top:10px;">
+                    <div class="form-group">
+                        <label>От</label>
+                        <input type="number" id="randomNumberFrom" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>До</label>
+                        <input type="number" id="randomNumberTo" value="10">
+                    </div>
+                </div>
+
+                <div class="random-number-result" id="randomNumberResultText">?</div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="randomNumberGenerateBtn">🎲 Сгенерировать</button>
+                    <button class="btn btn-secondary" id="randomNumberCloseBtn">✖ Закрыть</button>
                 </div>
             </div>
         </div>
