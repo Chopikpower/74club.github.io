@@ -2322,6 +2322,90 @@ function addRegistrationButton() {
     $('rulesBtn').before(btn);
 }
 
+/************************************************************
+ * МОНЕТКА / СЛУЧАЙНОЕ ЧИСЛО (доступно и гостю, и админу)
+ ************************************************************/
+
+let coinFlipTotalDeg = 0;
+let coinFlipInProgress = false;
+
+function flipCoin() {
+    if (coinFlipInProgress) return;
+
+    const coin = $('coinFlipCoin');
+    const btn = $('coinFlipThrowBtn');
+    const resultText = $('coinFlipResultText');
+    if (!coin) return;
+
+    coinFlipInProgress = true;
+    if (btn) btn.disabled = true;
+    resultText.textContent = 'Крутится...';
+
+    const isHeads = Math.random() < 0.5;
+    const spins = 5 + Math.floor(Math.random() * 3); // 5-7 полных оборотов
+
+    // Всегда крутим от 0, независимо от прошлого броска — так итоговый
+    // угол точно предсказуем и не может "разъехаться" с накоплением.
+    const targetDeg = spins * 360 + (isHeads ? 0 : 180);
+
+    coin.classList.add('spinning');
+    coin.style.transform = `rotateY(${targetDeg}deg)`;
+
+    setTimeout(() => {
+        // Жёстко фиксируем итоговую сторону (0 или 180), без анимации
+        // и без накопленных градусов — гарантирует, что видимая сторона
+        // монетки и текст результата всегда совпадают.
+        coin.classList.remove('spinning');
+        coin.style.transform = `rotateY(${isHeads ? 0 : 180}deg)`;
+
+        resultText.textContent = isHeads ? '🦅 Выпал ОРЁЛ' : '🪙 Выпала РЕШКА';
+        coinFlipInProgress = false;
+        if (btn) btn.disabled = false;
+    }, 2200);
+}
+
+let randomNumberSpinTimer = null;
+
+function generateRandomNumber() {
+    const fromInput = $('randomNumberFrom');
+    const toInput = $('randomNumberTo');
+    const resultText = $('randomNumberResultText');
+    const btn = $('randomNumberGenerateBtn');
+    if (!resultText) return;
+
+    let from = parseInt(fromInput.value);
+    let to = parseInt(toInput.value);
+
+    if (isNaN(from) || isNaN(to)) {
+        alert('Укажи оба числа диапазона');
+        return;
+    }
+
+    const lo = Math.min(from, to);
+    const hi = Math.max(from, to);
+    const finalResult = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+
+    if (randomNumberSpinTimer) clearInterval(randomNumberSpinTimer);
+    if (btn) btn.disabled = true;
+
+    let ticks = 0;
+    const maxTicks = 14;
+
+    randomNumberSpinTimer = setInterval(() => {
+        ticks++;
+
+        if (ticks >= maxTicks) {
+            clearInterval(randomNumberSpinTimer);
+            randomNumberSpinTimer = null;
+            resultText.textContent = finalResult;
+            if (btn) btn.disabled = false;
+            return;
+        }
+
+        resultText.textContent = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    }, 70);
+}
+
 function openRegistrationEntry() {
     const limit = Number(state.tournament.registrationLimit) || 0;
 
@@ -3596,6 +3680,41 @@ function resetAll() {
             $('gridRulesPeekModal').classList.remove('active');
         };
     }
+
+    if ($('coinFlipOpenBtn')) {
+        $('coinFlipOpenBtn').onclick = () => {
+            $('coinFlipResultText').textContent = 'Нажми «Бросить», чтобы узнать результат';
+            $('coinFlipModal').classList.add('active');
+        };
+    }
+
+    if ($('coinFlipCloseBtn')) {
+        $('coinFlipCloseBtn').onclick = () => {
+            $('coinFlipModal').classList.remove('active');
+        };
+    }
+
+    if ($('coinFlipThrowBtn')) {
+        $('coinFlipThrowBtn').onclick = () => flipCoin();
+    }
+
+    if ($('randomNumberOpenBtn')) {
+        $('randomNumberOpenBtn').onclick = () => {
+            $('randomNumberResultText').textContent = '?';
+            $('randomNumberModal').classList.add('active');
+        };
+    }
+
+    if ($('randomNumberCloseBtn')) {
+        $('randomNumberCloseBtn').onclick = () => {
+            $('randomNumberModal').classList.remove('active');
+        };
+    }
+
+    if ($('randomNumberGenerateBtn')) {
+        $('randomNumberGenerateBtn').onclick = () => generateRandomNumber();
+    }
+
     $('cancelLoginBtn').onclick = () => $('loginModal').classList.remove('active');
 
     $('confirmLoginBtn').onclick = async () => {
