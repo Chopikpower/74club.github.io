@@ -1898,16 +1898,34 @@ function savePlayersToFile() {
         return;
     }
 
-    const data = {
-        type: 'poker_timer_players',
-        version: 1,
-        players: state.grid.players.map(p => ({
-            name: p.name,
-            chips: p.chips
-        }))
-    };
+    let data;
 
-    downloadJson(data, `poker-players-${new Date().toISOString().slice(0, 10)}.json`);
+    if (state.grid.gridCreated && state.grid.tables.length) {
+        // Сетка уже создана — сохраняем целиком, со столами и рассадкой,
+        // чтобы при загрузке всё восстановилось точно как было.
+        data = {
+            type: 'poker_timer_grid',
+            version: 2,
+            players: state.grid.players,
+            tables: state.grid.tables,
+            gridCreated: true,
+            eliminationOrder: state.grid.eliminationOrder,
+            tournamentEnded: state.grid.tournamentEnded,
+            maxPlayersPerTable: state.grid.maxPlayersPerTable
+        };
+    } else {
+        // Сетка ещё не создана — сохраняем просто список участников.
+        data = {
+            type: 'poker_timer_players',
+            version: 1,
+            players: state.grid.players.map(p => ({
+                name: p.name,
+                chips: p.chips
+            }))
+        };
+    }
+
+    downloadJson(data, `poker-grid-${new Date().toISOString().slice(0, 10)}.json`);
 }
 
 function loadPlayersFromFile() {
@@ -1923,7 +1941,48 @@ function loadPlayersFromFile() {
 
         reader.onload = ev => {
             try {
-                const players = parsePlayersFile(String(ev.target.result), file.name);
+                const rawText = String(ev.target.result);
+
+                // Полный формат (со столами/рассадкой) — восстанавливаем один в один.
+                if (file.name.toLowerCase().endsWith('.json')) {
+                    const parsed = JSON.parse(rawText);
+
+                    if (parsed && parsed.type === 'poker_timer_grid' && Array.isArray(parsed.tables)) {
+                        if (state.grid.gridCreated && !confirm('Сетка уже создана. Заменить её загруженной сеткой (со столами)?')) {
+                            return;
+                        }
+
+                        state.grid.players = parsed.players || [];
+                        state.grid.tables = parsed.tables || [];
+                        state.grid.gridCreated = !!parsed.gridCreated;
+                        state.grid.eliminationOrder = parsed.eliminationOrder || [];
+                        state.grid.tournamentEnded = !!parsed.tournamentEnded;
+
+                        if (parsed.maxPlayersPerTable) {
+                            state.grid.maxPlayersPerTable = parsed.maxPlayersPerTable;
+                            if ($('maxPlayersPerTable')) $('maxPlayersPerTable').value = parsed.maxPlayersPerTable;
+                        }
+
+                        if (state.ui) state.ui.participantListManualOverride = null;
+
+                        if (state.grid.gridCreated) {
+                            show($('addPlayerAfterGridSection'), 'block');
+                        } else {
+                            hide($('addPlayerAfterGridSection'));
+                        }
+
+                        renderPlayerList();
+                        renderTables();
+                        renderRating();
+                        saveGridData();
+
+                        alert(`Сетка загружена: ${state.grid.players.length} игроков, ${state.grid.tables.length} столов`);
+                        return;
+                    }
+                }
+
+                // Обычный формат — просто список имён/очков.
+                const players = parsePlayersFile(rawText, file.name);
 
                 if (!players.length) {
                     alert('Игроки не найдены');
@@ -1995,8 +2054,8 @@ function addPlayerFileButtons() {
     btns.style.marginTop = '15px';
 
     btns.innerHTML = `
-        <button class="btn btn-secondary" id="savePlayersFileBtn">💾 Сохранить список игроков</button>
-        <button class="btn btn-secondary" id="loadPlayersFileBtn">📂 Загрузить список игроков</button>
+        <button class="btn btn-secondary" id="savePlayersFileBtn">💾 Сохранить сетку/список</button>
+        <button class="btn btn-secondary" id="loadPlayersFileBtn">📂 Загрузить сетку/список</button>
     `;
 
     $('createGridBtn').after(btns);
