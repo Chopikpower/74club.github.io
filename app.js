@@ -265,12 +265,23 @@ async function adminLogin(password) {
 
     const { data, error } = await supabaseClient.rpc('login', { password });
 
-    if (error || !data) {
+    if (error) {
+        console.error('Login error:', error);
         return { error: 'Неверный пароль' };
     }
 
-    localStorage.setItem(ADMIN_TOKEN_KEY, data);
-    rebuildSupabaseClient(data);
+    // PostgREST иногда оборачивает scalar-результат в массив
+    const token = Array.isArray(data) ? data[0] : data;
+
+    if (!token) {
+        return { error: 'Неверный пароль' };
+    }
+
+    // Убираем лишние кавычки если есть
+    const cleanToken = String(token).replace(/^"|"$/g, '');
+
+    localStorage.setItem(ADMIN_TOKEN_KEY, cleanToken);
+    rebuildSupabaseClient(cleanToken);
     handleAuthChange(true);
 
     return { error: null };
