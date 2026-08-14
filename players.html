@@ -729,12 +729,14 @@ $('confirmLoginBtn').onclick = async () => {
     const { data, error } = await supabaseClient.rpc('login', { password: entered });
 
     if (!error && data) {
-        localStorage.setItem('pokerAdminToken', data);
+        const token = String(Array.isArray(data) ? data[0] : data).replace(/^"|"$/g, '');
+
+        localStorage.setItem('pokerAdminToken', token);
 
         supabaseClient = window.supabase.createClient(
             SUPABASE_URL,
             SUPABASE_KEY,
-            { global: { headers: { Authorization: 'Bearer ' + data } } }
+            { global: { headers: { Authorization: 'Bearer ' + token } } }
         );
 
         isAdmin = true;
