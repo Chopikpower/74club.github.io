@@ -438,16 +438,15 @@ async function initSupabase() {
 
     const id = await ensureTournamentIdV2();
     if (id) {
+        // Realtime (WebSocket) на текущем хостинге БД недоступен —
+        // используется только поллинг (см. pollTimerV2/pollGridV2/pollSettingsV2).
         await loadTimerFromCloudV2();
-        subscribeTimerV2(id);
         startTimerPollingV2();
 
         await loadGridFromCloudV2();
-        subscribeGridV2(id);
         startGridPollingV2();
 
         await loadSettingsFromCloudV2();
-        subscribeSettingsV2(id);
         startSettingsPollingV2();
     }
 
