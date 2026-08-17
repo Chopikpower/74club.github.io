@@ -3003,7 +3003,20 @@ function renderTournamentOverview() {
                 <button class="btn btn-secondary" onclick="setTournamentTab('players')">👥 Участники</button>
             </div>
         </div>
+
+        <div class="tournament-panel">
+            <h3>👁 Видимость для гостей</h3>
+            <div class="form-group">
+                <button class="btn" id="tournamentGuestGridToggleBtn" style="width:100%;"></button>
+            </div>
+            <div class="form-group">
+                <button class="btn" id="tournamentGuestRegistrationToggleBtn" style="width:100%;"></button>
+            </div>
+        </div>
     `;
+
+    wireEditorVisibilityToggles();
+    updateAdminFeatureButtons();
 }
 
 function saveTournamentMainSettings() {
@@ -4352,32 +4365,31 @@ init();
         /**
          * Раньше здесь создавались 3 плавающие кнопки в шапке
          * (Изменить пароль / Сетка: показать-скрыть / Регистрация: показать-скрыть).
-         * Теперь всё это — часть панели «Редактор» (editorGuestGridToggleBtn,
-         * editorGuestRegistrationToggleBtn, обычная форма смены пароля),
-         * так админу не нужно скакать глазами по шапке на каждой странице.
+         * Смена пароля осталась в панели «Редактор» → «Настройки»,
+         * а переключатели видимости для гостей переехали в раздел
+         * «Турнир» → «Обзор» (tournamentGuestGridToggleBtn,
+         * tournamentGuestRegistrationToggleBtn) — там админу удобнее.
          */
         wireEditorVisibilityToggles();
         updateAdminFeatureButtons();
     }
 
     function wireEditorVisibilityToggles() {
-        const gridBtn = document.getElementById('editorGuestGridToggleBtn');
-        const regBtn = document.getElementById('editorGuestRegistrationToggleBtn');
+        const gridBtn = document.getElementById('tournamentGuestGridToggleBtn');
+        const regBtn = document.getElementById('tournamentGuestRegistrationToggleBtn');
 
-        if (gridBtn && !gridBtn.dataset.wired) {
-            gridBtn.dataset.wired = '1';
+        if (gridBtn) {
             gridBtn.onclick = toggleGuestGridVisibility;
         }
 
-        if (regBtn && !regBtn.dataset.wired) {
-            regBtn.dataset.wired = '1';
+        if (regBtn) {
             regBtn.onclick = toggleGuestRegistrationVisibility;
         }
     }
 
     function updateAdminFeatureButtons() {
-        const toggleBtn = document.getElementById('editorGuestGridToggleBtn');
-        const registrationToggleBtn = document.getElementById('editorGuestRegistrationToggleBtn');
+        const toggleBtn = document.getElementById('tournamentGuestGridToggleBtn');
+        const registrationToggleBtn = document.getElementById('tournamentGuestRegistrationToggleBtn');
 
         const guestGridVisible = state.settings.guestGridVisible !== false;
         const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
@@ -5372,3 +5384,5 @@ init();
     });
 
 })();
+
+
