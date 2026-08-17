@@ -209,12 +209,12 @@ function loadLocal(key, fallback = null) {
 }
 
 /**
- * v2: админ-статус больше не хранится в localStorage и не завязан
- * на общий пароль. Источник истины — сессия Supabase Auth.
- * state.isAdmin выставляется в onAuthStateChange (см. ниже) и
- * автоматически восстанавливается при перезагрузке страницы,
- * пока сессия не истекла — работает в любом браузере/инкогнито,
- * если ввести правильный пароль хотя бы раз.
+ * v2b: полноценного Supabase Auth (GoTrue) на текущем хостинге БД нет —
+ * используется lite-stack (Postgres + PostgREST). Проверка пароля идёт
+ * через SQL-функцию verify_admin_password (bcrypt-сверка на стороне
+ * базы, хеш никогда не покидает сервер). Статус "я админ" на этом
+ * устройстве хранится в localStorage — сервер отдельной сессии не
+ * выдаёт, поэтому безопасность держится на самом пароле, а не на токене.
  */
 
 /************************************************************
@@ -229,27 +229,31 @@ function supabaseConfigured() {
 }
 
 /************************************************************
- * v2 AUTH (Supabase Auth вместо общего пароля в localStorage)
+ * v2b AUTH (RPC-проверка пароля вместо Supabase Auth)
  ************************************************************/
+
+const ADMIN_LOCAL_FLAG = 'pokerAdminV2b';
 
 async function adminLogin(password) {
     if (!supabaseClient) return { error: 'Supabase не готов' };
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-        email: ADMIN_EMAIL,
-        password
-    });
+    const { data, error } = await supabaseClient.rpc('verify_admin_password', { pwd: password });
 
-    return { error: error ? error.message : null };
+    if (error) return { error: error.message };
+    if (!data) return { error: 'Неверный пароль' };
+
+    saveLocal(ADMIN_LOCAL_FLAG, true);
+    handleAuthChange(true);
+    return { error: null };
 }
 
 async function adminLogout() {
-    if (!supabaseClient) return;
-    await supabaseClient.auth.signOut();
+    localStorage.removeItem(ADMIN_LOCAL_FLAG);
+    handleAuthChange(false);
 }
 
-function handleAuthChange(session) {
-    state.isAdmin = !!session;
+function handleAuthChange(isAdmin) {
+    state.isAdmin = !!isAdmin;
     updateAdminUI();
     renderTables();
 
@@ -427,14 +431,9 @@ async function initSupabase() {
 
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Восстанавливаем сессию админа, если она ещё жива (работает
-    // в любом браузере/устройстве после однократного входа).
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    state.isAdmin = !!sessionData?.session;
-
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-        handleAuthChange(session);
-    });
+    // v2b: сессии Supabase Auth нет — статус админа восстанавливаем
+    // из localStorage (работает на этом устройстве, пока не выйти).
+    state.isAdmin = !!loadLocal(ADMIN_LOCAL_FLAG, false);
 
     const id = await ensureTournamentIdV2();
     if (id) {
@@ -3822,10 +3821,16 @@ function resetAll() {
             return;
         }
 
-        const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+        const oldPwd = prompt('Введите текущий пароль для подтверждения:');
+        if (!oldPwd) return;
 
-        if (error) {
-            alert('Не удалось сменить пароль: ' + error.message);
+        const { data, error } = await supabaseClient.rpc('change_admin_password', {
+            old_pwd: oldPwd,
+            new_pwd: p1
+        });
+
+        if (error || !data) {
+            alert('Не удалось сменить пароль: ' + (error ? error.message : 'неверный текущий пароль'));
             return;
         }
 
@@ -4319,10 +4324,16 @@ init();
             return;
         }
 
-        const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+        const oldPwd = prompt('Введите текущий пароль для подтверждения:');
+        if (!oldPwd) return;
 
-        if (error) {
-            alert('Не удалось сменить пароль: ' + error.message);
+        const { data, error } = await supabaseClient.rpc('change_admin_password', {
+            old_pwd: oldPwd,
+            new_pwd: p1
+        });
+
+        if (error || !data) {
+            alert('Не удалось сменить пароль: ' + (error ? error.message : 'неверный текущий пароль'));
             return;
         }
 
