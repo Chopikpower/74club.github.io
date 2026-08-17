@@ -4386,6 +4386,7 @@ init();
             regBtn.onclick = toggleGuestRegistrationVisibility;
         }
     }
+    window.wireEditorVisibilityToggles = wireEditorVisibilityToggles;
 
     function updateAdminFeatureButtons() {
         const toggleBtn = document.getElementById('tournamentGuestGridToggleBtn');
@@ -4422,6 +4423,7 @@ init();
             }
         }
     }
+    window.updateAdminFeatureButtons = updateAdminFeatureButtons;
 
     /************************************************************
      * GUEST GRID VISIBILITY
