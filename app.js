@@ -2283,13 +2283,16 @@ function defaultRulesText() {
 Все спорные ситуации решаются организатором турнира.`;
 }
 
+function saveRulesText(text) {
+    state.rules.text = String(text || '').trim();
+    localStorage.setItem('pokerRulesText', state.rules.text);
+    writeSettingsToCloudV2();
+}
+
 function saveRules() {
     if (!state.isAdmin) return;
 
-    state.rules.text = $('rulesEditor').value.trim();
-    localStorage.setItem('pokerRulesText', state.rules.text);
-
-    writeSettingsToCloudV2();
+    saveRulesText($('rulesEditor').value);
 
     alert('Правила сохранены');
 }
@@ -3681,8 +3684,30 @@ function resetAll() {
 
     if ($('gridRulesPeekBtn')) {
         $('gridRulesPeekBtn').onclick = () => {
-            $('gridRulesPeekText').textContent = state.rules.text || 'Правила пока не заполнены администратором.';
+            const viewBox = $('gridRulesPeekText');
+            const editor = $('gridRulesPeekEditor');
+            const saveBtn = $('gridRulesPeekSaveBtn');
+
+            if (state.isAdmin) {
+                viewBox.style.display = 'none';
+                editor.style.display = 'block';
+                saveBtn.style.display = '';
+                editor.value = state.rules.text || '';
+            } else {
+                viewBox.style.display = '';
+                editor.style.display = 'none';
+                saveBtn.style.display = 'none';
+                viewBox.textContent = state.rules.text || 'Правила пока не заполнены администратором.';
+            }
+
             $('gridRulesPeekModal').classList.add('active');
+        };
+    }
+
+    if ($('gridRulesPeekSaveBtn')) {
+        $('gridRulesPeekSaveBtn').onclick = () => {
+            saveRulesText($('gridRulesPeekEditor').value);
+            alert('Правила сохранены');
         };
     }
 
