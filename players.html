@@ -337,8 +337,10 @@
 const SUPABASE_URL = 'https://db2.74club.ru';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWxpdGUiLCJpYXQiOjE3ODY5NDg1MzQsImV4cCI6MjEwMjMwODUzNH0.swVB5vREO4eBxc_VgehUWyxSpHMP4daj75b9Ia36zzQ';
 
-// Тот же единственный админ, что и в app.js — вход через Supabase Auth.
-const ADMIN_EMAIL = 'Caponerj@mail.ru';
+// Тот же единственный админ, что и в app.js — вход через RPC-функцию
+// verify_admin_password (проверка bcrypt на стороне БД), статус хранится
+// в localStorage устройства — на db2 нет Supabase Auth (GoTrue).
+const ADMIN_LOCAL_FLAG = 'pokerAdminV2b';
 
 let supabaseClient = null;
 let tournamentId = null;
@@ -366,14 +368,8 @@ async function initSupabase() {
     }
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    isAdmin = !!sessionData?.session;
+    isAdmin = !!(localStorage.getItem(ADMIN_LOCAL_FLAG) === 'true');
     updateAuthUI();
-
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-        isAdmin = !!session;
-        updateAuthUI();
-    });
 
     const { data: t, error: tErr } = await supabaseClient
         .from('tournaments')
@@ -704,21 +700,23 @@ $('cancelLoginBtn').onclick = () => $('loginModal').classList.remove('active');
 
 $('confirmLoginBtn').onclick = async () => {
     const entered = $('adminPasswordInput').value;
-    const { error } = await supabaseClient.auth.signInWithPassword({
-        email: ADMIN_EMAIL,
-        password: entered
-    });
 
-    if (!error) {
+    const { data, error } = await supabaseClient.rpc('verify_admin_password', { pwd: entered });
+
+    if (!error && data) {
+        localStorage.setItem(ADMIN_LOCAL_FLAG, 'true');
+        isAdmin = true;
+        updateAuthUI();
         $('loginModal').classList.remove('active');
-        // isAdmin и updateAuthUI() обновятся автоматически через onAuthStateChange.
     } else {
         alert('Неверный пароль');
     }
 };
 
-$('logoutBtn').onclick = async () => {
-    await supabaseClient.auth.signOut();
+$('logoutBtn').onclick = () => {
+    localStorage.removeItem(ADMIN_LOCAL_FLAG);
+    isAdmin = false;
+    updateAuthUI();
 };
 
 /************************************************************
