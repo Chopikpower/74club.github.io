@@ -304,7 +304,9 @@ function timerRowToData(row) {
         isBreak: row.is_break,
         breakType: row.break_type,
         tournamentEnded: row.tournament_ended,
-        tournamentStartedAt: row.tournament_started_at ? new Date(row.tournament_started_at).getTime() : null
+        tournamentStartedAt: row.tournament_started_at ? new Date(row.tournament_started_at).getTime() : null,
+        templates: row.templates || null,
+        currentTemplate: row.current_template || null
     };
 }
 
@@ -414,6 +416,8 @@ async function writeTimerToCloudV2() {
             break_type: t.breakType,
             tournament_started_at: t.tournamentStartedAt ? new Date(t.tournamentStartedAt).toISOString() : null,
             tournament_ended: t.tournamentEnded,
+            templates: state.templates,
+            current_template: state.currentTemplate,
             updated_at: new Date().toISOString()
         })
         .eq('tournament_id', id);
