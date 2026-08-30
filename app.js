@@ -2127,7 +2127,7 @@ function renderRating(targetId = 'ratingList') {
     if (statusEl && !isScreenshot) {
         statusEl.textContent = ended
             ? 'Турнир завершён — итоговые места и очки'
-            : 'Турнир продолжается — призовые очки будут раскрыты после завершения';
+            : 'Турнир продолжается — победители будут раскрыты после завершения';
     }
 
     const totalChips = state.grid.players.reduce((s, p) => s + Number(p.chips || 0), 0);
@@ -2156,7 +2156,7 @@ function renderRating(targetId = 'ratingList') {
         item.innerHTML = `
             <div class="rating-position">${place}</div>
             <div class="rating-name">${player ? escapeHtml(player.name) : '—'}</div>
-            <div class="rating-points">${ended ? points + ' очков' : '?'}</div>
+            <div class="rating-points">${points} очков</div>
         `;
 
         list.appendChild(item);
@@ -2694,7 +2694,7 @@ function renderTemplatesList() {
                 </div>
                 <div class="template-item-actions">
                     <button class="btn ${active ? 'btn-secondary' : 'btn-success'}" onclick="useTemplate('${name}')">${active ? 'Используется' : 'Использовать'}</button>
-                    <button class="btn btn-secondary" onclick="editTemplate('${name}')">✏️ Изменить</button>
+                    <button class="btn btn-secondary" onclick="editTemplate('${name}')"✏️ Изменить</button>
                     <button class="btn btn-secondary" onclick="exportSpecificTemplate('${name}')">📥 Экспорт</button>
                     ${Object.keys(state.templates).length > 1 ? `<button class="btn btn-danger" onclick="deleteTemplate('${name}')">🗑️</button>` : ''}
                 </div>
