@@ -2113,18 +2113,38 @@ function renderRating(targetId = 'ratingList') {
 
     list.innerHTML = '';
 
-    if (!state.grid.players.length) {
-        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">Нет участников</p>';
+    const isScreenshot = targetId !== 'ratingList';
+    const statusEl = $('ratingStatus');
+
+    if (!state.settings.prizePlaces.length) {
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">Призовые места не настроены</p>';
+        if (statusEl && !isScreenshot) statusEl.textContent = '';
         return;
     }
 
-    const players = getPlayersWithPlaces();
+    const ended = !!state.grid.tournamentEnded;
+
+    if (statusEl && !isScreenshot) {
+        statusEl.textContent = ended
+            ? 'Турнир завершён — итоговые места и очки'
+            : 'Турнир продолжается — призовые очки будут раскрыты после завершения';
+    }
+
     const totalChips = state.grid.players.reduce((s, p) => s + Number(p.chips || 0), 0);
 
-    players.forEach(player => {
-        const place = player.eliminationPlace;
-        const prize = state.settings.prizePlaces.find(p => Number(p.place) === Number(place));
-        const points = prize ? Math.round(totalChips * prize.percentage / 100) : 0;
+    const playersByPlace = {};
+    if (ended) {
+        getPlayersWithPlaces().forEach(p => {
+            playersByPlace[p.eliminationPlace] = p;
+        });
+    }
+
+    const places = [...state.settings.prizePlaces].sort((a, b) => Number(a.place) - Number(b.place));
+
+    places.forEach(prize => {
+        const place = Number(prize.place);
+        const points = Math.round(totalChips * prize.percentage / 100);
+        const player = playersByPlace[place];
 
         const item = document.createElement('div');
         item.className = 'rating-item';
@@ -2135,8 +2155,8 @@ function renderRating(targetId = 'ratingList') {
 
         item.innerHTML = `
             <div class="rating-position">${place}</div>
-            <div class="rating-name">${escapeHtml(player.name)}</div>
-            <div class="rating-points">${points} очков</div>
+            <div class="rating-name">${player ? escapeHtml(player.name) : '—'}</div>
+            <div class="rating-points">${ended ? points + ' очков' : '?'}</div>
         `;
 
         list.appendChild(item);
