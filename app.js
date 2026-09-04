@@ -4587,8 +4587,8 @@ init();
 
         alert(
             state.settings.guestRegistrationVisible !== false
-                ? 'Регистрация ВКЛ'
-                : 'Регистрация ВЫКЛ'
+                ? 'Рег *ВКЛ'
+                : 'Рег *ВЫКЛ'
         );
     }
 
@@ -4625,8 +4625,8 @@ init();
 
         alert(
             state.settings.guestGridVisible !== false
-                ? 'Сетка ВКЛ'
-                : 'Сетка ВЫКЛ'
+                ? 'Сетка *ВКЛ'
+                : 'Сетка *ВЫКЛ'
         );
     }
 
