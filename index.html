@@ -380,6 +380,26 @@
             display: flex;
         }
 
+        /* Роль timer_only видит только управление таймером — все
+           остальные админ-функции скрыты, даже если is-admin включён. */
+        body.is-timer-only-admin .hub-admin-only,
+        body.is-timer-only-admin #editorBtn,
+        body.is-timer-only-admin #playerRegistrationAdminControls,
+        body.is-timer-only-admin #playerRegistrationAdminControls2,
+        body.is-timer-only-admin #saveRatingJpgBtn,
+        body.is-timer-only-admin .tournament-nav,
+        body.is-timer-only-admin #gridRulesPeekSaveBtn,
+        body.is-timer-only-admin #tournamentGuestGridToggleBtn,
+        body.is-timer-only-admin #tournamentGuestRegistrationToggleBtn {
+            display: none !important;
+        }
+
+        /* Роль admin_no_pwd видит всё как обычный админ, кроме смены пароля. */
+        body.is-no-pwd-admin #changePasswordBtn,
+        body.is-no-pwd-admin .change-password-section {
+            display: none !important;
+        }
+
         .user-role {
             background: var(--secondary-color);
             padding: 5px 15px;
@@ -2392,15 +2412,30 @@
                         </div>
                     </div>
                     <h3 style="margin-top:30px;">Общие настройки</h3>
-                    <div class="form-group">
-                        <label>Сменить пароль админа</label>
-                        <input type="password" id="newPassword" placeholder="Новый пароль">
+                    <div class="change-password-section">
+                        <div class="form-group">
+                            <label>Сменить пароль админа</label>
+                            <input type="password" id="newPassword" placeholder="Новый пароль">
+                        </div>
+                        <div class="form-group">
+                            <label>Подтвердите пароль</label>
+                            <input type="password" id="confirmPassword" placeholder="Повторите пароль">
+                        </div>
+                        <button class="btn btn-primary" id="changePasswordBtn">Изменить пароль</button>
                     </div>
-                    <div class="form-group">
-                        <label>Подтвердите пароль</label>
-                        <input type="password" id="confirmPassword" placeholder="Повторите пароль">
+
+                    <div class="super-admin-section" id="superAdminSection" style="display:none;">
+                        <h3 style="margin-top:30px;">Пароли других админов</h3>
+                        <div class="form-group">
+                            <label>Логин админа</label>
+                            <input type="text" id="manageAdminUsername" placeholder="admin2 или admin3">
+                        </div>
+                        <div class="form-group">
+                            <label>Новый пароль для него</label>
+                            <input type="password" id="manageAdminNewPassword" placeholder="Новый пароль">
+                        </div>
+                        <button class="btn btn-primary" id="manageAdminPasswordBtn">💾 Задать пароль</button>
                     </div>
-                    <button class="btn btn-primary" id="changePasswordBtn">Изменить пароль</button>
 
                     <div class="danger-zone">
                         <h3>Опасная зона</h3>
@@ -2587,8 +2622,12 @@
         <div class="modal-content login-modal">
             <div class="modal-header">🔐 Вход</div>
             <div class="form-group">
+                <label>Логин</label>
+                <input type="text" id="adminUsername" placeholder="admin" autocomplete="username">
+            </div>
+            <div class="form-group">
                 <label>Пароль</label>
-                <input type="password" id="adminPassword" placeholder="Введите пароль">
+                <input type="password" id="adminPassword" placeholder="Введите пароль" autocomplete="current-password">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelLoginBtn">Отмена</button>
