@@ -232,28 +232,55 @@ function supabaseConfigured() {
  * v2b AUTH (RPC-проверка пароля вместо Supabase Auth)
  ************************************************************/
 
-const ADMIN_LOCAL_FLAG = 'pokerAdminV2b';
+/**
+ * v2c: несколько админов с разными правами.
+ * - super — полные права, включая смену пароля (любого аккаунта)
+ * - admin_no_pwd — те же права, что у super, кроме смены пароля
+ * - timer_only — доступ только к управлению таймером
+ *
+ * Логины/пароли и роли хранятся в таблице admin_accounts на сервере,
+ * проверка идёт через RPC verify_admin_login (bcrypt на стороне БД).
+ * Локально (localStorage) хранится только username + role текущего
+ * вошедшего админа на этом устройстве.
+ */
 
-async function adminLogin(password) {
+const ADMIN_LOCAL_FLAG = 'pokerAdminV2b';
+const ADMIN_USER_FLAG = 'pokerAdminUserV2c';
+const ADMIN_ROLE_FLAG = 'pokerAdminRoleV2c';
+
+async function adminLogin(username, password) {
     if (!supabaseClient) return { error: 'Supabase не готов' };
 
-    const { data, error } = await supabaseClient.rpc('verify_admin_password', { pwd: password });
+    const { data, error } = await supabaseClient.rpc('verify_admin_login', {
+        p_username: String(username || '').trim(),
+        p_password: password
+    });
 
     if (error) return { error: error.message };
-    if (!data) return { error: 'Неверный пароль' };
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (!row || !row.ok) return { error: 'Неверный логин или пароль' };
 
     saveLocal(ADMIN_LOCAL_FLAG, true);
-    handleAuthChange(true);
+    saveLocal(ADMIN_USER_FLAG, String(username || '').trim());
+    saveLocal(ADMIN_ROLE_FLAG, row.role);
+
+    handleAuthChange(true, String(username || '').trim(), row.role);
     return { error: null };
 }
 
 async function adminLogout() {
     localStorage.removeItem(ADMIN_LOCAL_FLAG);
-    handleAuthChange(false);
+    localStorage.removeItem(ADMIN_USER_FLAG);
+    localStorage.removeItem(ADMIN_ROLE_FLAG);
+    handleAuthChange(false, null, null);
 }
 
-function handleAuthChange(isAdmin) {
+function handleAuthChange(isAdmin, username, role) {
     state.isAdmin = !!isAdmin;
+    state.adminUsername = username || null;
+    state.adminRole = role || null;
     updateAdminUI();
     renderTables();
 
@@ -262,6 +289,16 @@ function handleAuthChange(isAdmin) {
     if (state.isAdmin) {
         loadTimerFromCloudV2();
     }
+}
+
+// Управление таймером доступно всем трём ролям. "Полные" права —
+// всё, кроме управления таймером в чистом виде — только у super/admin_no_pwd.
+function isFullAdmin() {
+    return state.isAdmin && state.adminRole !== 'timer_only';
+}
+
+function canChangePassword() {
+    return state.isAdmin && state.adminRole === 'super';
 }
 
 /************************************************************
@@ -438,6 +475,8 @@ async function initSupabase() {
     // v2b: сессии Supabase Auth нет — статус админа восстанавливаем
     // из localStorage (работает на этом устройстве, пока не выйти).
     state.isAdmin = !!loadLocal(ADMIN_LOCAL_FLAG, false);
+    state.adminUsername = loadLocal(ADMIN_USER_FLAG, null);
+    state.adminRole = loadLocal(ADMIN_ROLE_FLAG, null);
 
     const id = await ensureTournamentIdV2();
     if (id) {
@@ -3525,6 +3564,10 @@ function renderTournamentRules() {
  ************************************************************/
 
 function showPage(pageId) {
+    if ((pageId === 'editorPage' || pageId === 'tournamentPage') && !isFullAdmin()) {
+        pageId = 'hubPage';
+    }
+
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
     document.body.classList.toggle('on-hub', pageId === 'hubPage');
@@ -3561,9 +3604,13 @@ function showPage(pageId) {
 }
 
 function updateAdminUI() {
-    setText('userRole', state.isAdmin ? 'Админ' : 'Гость');
-    setText('hubUserRole', state.isAdmin ? 'Админ' : 'Гость');
-    setText('timerFooterRole', state.isAdmin ? 'Админ' : 'Гость');
+    const roleLabel = state.isAdmin
+        ? (state.adminRole === 'timer_only' ? 'Админ (таймер)' : 'Админ')
+        : 'Гость';
+
+    setText('userRole', roleLabel);
+    setText('hubUserRole', roleLabel);
+    setText('timerFooterRole', roleLabel);
 
     // Эти кнопки видны всем: и админу, и гостю
     show($('leagueBtn'), 'inline-block');
@@ -3572,8 +3619,15 @@ function updateAdminUI() {
     show($('ratingBtn'), 'inline-block');
     show($('gridBtn'), 'inline-block');
 
+    document.body.classList.toggle('is-timer-only-admin', state.isAdmin && state.adminRole === 'timer_only');
+    document.body.classList.toggle('is-no-pwd-admin', state.isAdmin && state.adminRole === 'admin_no_pwd');
+
+    if ($('superAdminSection')) {
+        show($('superAdminSection'), state.isAdmin && state.adminRole === 'super' ? 'block' : 'none');
+    }
+
     if (state.isAdmin) {
-        show($('editorBtn'), 'inline-block');
+        show($('editorBtn'), isFullAdmin() ? 'inline-block' : 'none');
         document.body.classList.add('is-admin');
         hide($('loginBtn'));
         show($('logoutBtn'), 'inline-block');
@@ -3585,9 +3639,9 @@ function updateAdminUI() {
         show($('timerControls'), 'flex');
         show($('progressContainer'));
         show($('playerRegistrationSection'), 'block');
-        show($('playerRegistrationAdminControls'), 'block');
-        show($('playerRegistrationAdminControls2'), 'block');
-        show($('saveRatingJpgBtn'), 'inline-block');
+        show($('playerRegistrationAdminControls'), isFullAdmin() ? 'block' : 'none');
+        show($('playerRegistrationAdminControls2'), isFullAdmin() ? 'block' : 'none');
+        show($('saveRatingJpgBtn'), isFullAdmin() ? 'inline-block' : 'none');
     } else {
         hide($('editorBtn'));
         document.body.classList.remove('is-admin');
@@ -3611,7 +3665,7 @@ function updateAdminUI() {
     const grid = $('gridContainer');
 
     if (grid) {
-        grid.classList.toggle('guest-view', !state.isAdmin);
+        grid.classList.toggle('guest-view', !isFullAdmin());
     }
 
     renderPlayerList();
@@ -3635,6 +3689,11 @@ function updateSettingsUI() {
  ************************************************************/
 
 function resetAll() {
+    if (!isFullAdmin()) {
+        alert('Недостаточно прав для сброса данных');
+        return;
+    }
+
     if (!confirm('Сбросить все данные турнира?')) return;
 
     resetTimer();
@@ -3712,7 +3771,7 @@ function resetAll() {
             const editor = $('gridRulesPeekEditor');
             const saveBtn = $('gridRulesPeekSaveBtn');
 
-            if (state.isAdmin) {
+            if (isFullAdmin()) {
                 viewBox.style.display = 'none';
                 editor.style.display = 'block';
                 saveBtn.style.display = '';
@@ -3730,6 +3789,7 @@ function resetAll() {
 
     if ($('gridRulesPeekSaveBtn')) {
         $('gridRulesPeekSaveBtn').onclick = () => {
+            if (!isFullAdmin()) return;
             saveRulesText($('gridRulesPeekEditor').value);
             alert('Правила сохранены');
         };
@@ -3778,6 +3838,7 @@ function resetAll() {
     $('cancelLoginBtn').onclick = () => $('loginModal').classList.remove('active');
 
     $('confirmLoginBtn').onclick = async () => {
+        const user = $('adminUsername').value;
         const pass = $('adminPassword').value;
         const btn = $('confirmLoginBtn');
 
@@ -3785,18 +3846,17 @@ function resetAll() {
         const originalText = btn.textContent;
         btn.textContent = 'Проверка...';
 
-        const { error } = await adminLogin(pass);
+        const { error } = await adminLogin(user, pass);
 
         btn.disabled = false;
         btn.textContent = originalText;
 
         if (!error) {
-            // state.isAdmin выставляется автоматически через onAuthStateChange,
-            // здесь только закрываем модалку.
             $('loginModal').classList.remove('active');
+            $('adminUsername').value = '';
             $('adminPassword').value = '';
         } else {
-            alert('Неверный пароль');
+            alert('Неверный логин или пароль');
         }
     };
 
@@ -3870,6 +3930,11 @@ function resetAll() {
     };
 
     $('changePasswordBtn').onclick = async () => {
+        if (!canChangePassword()) {
+            alert('У вашей учётной записи нет прав на смену пароля');
+            return;
+        }
+
         const p1 = $('newPassword').value;
         const p2 = $('confirmPassword').value;
 
@@ -3887,6 +3952,7 @@ function resetAll() {
         if (!oldPwd) return;
 
         const { data, error } = await supabaseClient.rpc('change_admin_password', {
+            p_username: state.adminUsername,
             old_pwd: oldPwd,
             new_pwd: p1
         });
@@ -3901,6 +3967,42 @@ function resetAll() {
 
         alert('Пароль изменён');
     };
+
+    if ($('manageAdminPasswordBtn')) {
+        $('manageAdminPasswordBtn').onclick = async () => {
+            if (state.adminRole !== 'super') {
+                alert('Только admin может менять пароли других админов');
+                return;
+            }
+
+            const targetUsername = $('manageAdminUsername').value.trim();
+            const newPwd = $('manageAdminNewPassword').value;
+
+            if (!targetUsername || !newPwd) {
+                alert('Заполните логин и новый пароль');
+                return;
+            }
+
+            const myPwd = prompt('Подтвердите свой пароль (admin):');
+            if (!myPwd) return;
+
+            const { data, error } = await supabaseClient.rpc('admin_reset_password', {
+                p_admin_username: state.adminUsername,
+                p_admin_password: myPwd,
+                target_username: targetUsername,
+                new_pwd: newPwd
+            });
+
+            if (error || !data) {
+                alert('Не удалось сменить пароль: ' + (error ? error.message : 'проверьте свой пароль и логин'));
+                return;
+            }
+
+            $('manageAdminUsername').value = '';
+            $('manageAdminNewPassword').value = '';
+            alert(`Пароль для ${targetUsername} изменён`);
+        };
+    }
 
     $('playDefaultBlindSound').onclick = () => playDefaultSound(state.settings.defaultBlindSound);
     $('playDefaultBreakSound').onclick = () => playDefaultSound(state.settings.defaultBreakSound);
