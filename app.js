@@ -1246,6 +1246,8 @@ function addPlayer() {
 }
 
 function removePlayer(id) {
+    if (!isFullAdmin()) return;
+
     state.grid.players = state.grid.players.filter(p => p.id !== id);
     renderPlayerList();
     saveGridData();
@@ -1264,21 +1266,7 @@ function renderPlayerList() {
         const item = document.createElement('div');
         item.className = 'player-item';
 
-        if (state.isAdmin) {
-            item.innerHTML = `
-                <div class="player-item-info" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <span>${index + 1}.</span>
-                    <input type="text" class="player-edit-name" data-id="${p.id}" value="${escapeHtml(p.name)}"
-                        style="width:150px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
-                    <input type="number" class="player-edit-chips" data-id="${p.id}" value="${p.chips}" min="0"
-                        style="width:90px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
-                </div>
-                <div style="display:flex; gap:6px;">
-                    <button class="btn btn-primary btn-small" onclick="savePlayerEdit(${p.id})">💾</button>
-                    <button class="btn btn-warning btn-small" onclick="removePlayer(${p.id})">✕</button>
-                </div>
-            `;
-        } else {
+        if (isFullAdmin()) {
             item.innerHTML = `
                 <div class="player-item-info">
                     <span class="player-item-name">${index + 1}. ${escapeHtml(p.name)}</span>
@@ -1292,7 +1280,7 @@ function renderPlayerList() {
 }
 
 function savePlayerEdit(id) {
-    if (!state.isAdmin) return;
+    if (!isFullAdmin()) return;
 
     const nameInput = document.querySelector(`.player-edit-name[data-id="${id}"]`);
     const chipsInput = document.querySelector(`.player-edit-chips[data-id="${id}"]`);
@@ -1339,6 +1327,8 @@ function savePlayerEdit(id) {
 }
 
 function createGrid() {
+    if (!isFullAdmin()) return;
+
     if (state.grid.players.length === 0) {
         alert('Добавьте участников');
         return;
@@ -1376,6 +1366,8 @@ function createGrid() {
 }
 
 function addPlayerToGrid() {
+    if (!isFullAdmin()) return;
+
     const name = $('newPlayerName').value.trim();
     const chips = parseInt($('newPlayerChips').value) || 500;
 
@@ -1589,7 +1581,7 @@ function renderTables() {
             oval.appendChild(seat);
         });
 
-        if (state.isAdmin) {
+        if (isFullAdmin()) {
             const controls = document.createElement('div');
             controls.className = 'table-controls';
             controls.innerHTML = `
@@ -1604,11 +1596,13 @@ function renderTables() {
     const active = state.grid.players.filter(p => !p.eliminated).length;
 
     if ($('finalTableSection')) {
-        $('finalTableSection').style.display = state.isAdmin && state.grid.players.length > 0 ? 'block' : 'none';
+        $('finalTableSection').style.display = isFullAdmin() && state.grid.players.length > 0 ? 'block' : 'none';
     }
 }
 
 function openPlayerAction(player, tableId) {
+    if (!isFullAdmin()) return;
+
     state.grid.selectedPlayer = { player, tableId };
 
     $('playerActionTitle').textContent = `Игрок: ${player.name}`;
@@ -1629,6 +1623,8 @@ function openPlayerAction(player, tableId) {
 }
 
 function updatePlayerChips() {
+    if (!isFullAdmin()) return;
+
     const selected = state.grid.selectedPlayer;
     if (!selected) return;
 
@@ -1652,6 +1648,8 @@ function updatePlayerChips() {
 }
 
 function openMovePlayer() {
+    if (!isFullAdmin()) return;
+
     $('playerActionModal').classList.remove('active');
 
     const tableSelect = $('moveToTable');
@@ -1726,6 +1724,8 @@ function confirmMovePlayer() {
 }
 
 function eliminatePlayer() {
+    if (!isFullAdmin()) return;
+
     const selected = state.grid.selectedPlayer;
     if (!selected) return;
 
@@ -1739,6 +1739,8 @@ function eliminatePlayer() {
 }
 
 function eliminateFromTable(tableId) {
+    if (!isFullAdmin()) return;
+
     const table = state.grid.tables.find(t => String(t.id) === String(tableId));
     if (!table) return;
 
@@ -1880,6 +1882,8 @@ function markEliminated(id) {
 }
 
 function createFinalTable() {
+    if (!isFullAdmin()) return;
+
     const active = state.grid.players.filter(p => !p.eliminated);
 
     if (active.length < 2) {
@@ -1904,6 +1908,8 @@ function createFinalTable() {
 }
 
 function endTournament() {
+    if (!isFullAdmin()) return;
+
     const active = state.grid.players.filter(p => !p.eliminated);
 
     if (active.length === 0) {
@@ -2274,7 +2280,7 @@ function renderRulesPage() {
     const box = $('rulesContent');
     if (!box) return;
 
-    if (state.isAdmin) {
+    if (isFullAdmin()) {
         box.innerHTML = `
             <p style="color:var(--text-muted); margin-bottom:15px;">
                 Вы вошли как админ. Здесь можно редактировать правила. Гости смогут только читать.
@@ -2353,7 +2359,7 @@ function saveRulesText(text) {
 }
 
 function saveRules() {
-    if (!state.isAdmin) return;
+    if (!isFullAdmin()) return;
 
     saveRulesText($('rulesEditor').value);
 
@@ -2646,6 +2652,8 @@ function updateLevel(index, field, value) {
 }
 
 function deleteLevel(index) {
+    if (!isFullAdmin()) return;
+
     const t = currentTemplate();
 
     if (t.levels.length <= 1) {
@@ -2660,6 +2668,8 @@ function deleteLevel(index) {
 }
 
 function addLevel() {
+    if (!isFullAdmin()) return;
+
     const t = currentTemplate();
     const last = t.levels[t.levels.length - 1];
 
@@ -2674,6 +2684,8 @@ function addLevel() {
 }
 
 function saveLevels() {
+    if (!isFullAdmin()) return;
+
     const t = currentTemplate();
 
     t.levelDuration = parseInt($('levelDuration').value) || 15;
@@ -2688,6 +2700,8 @@ function saveLevels() {
 }
 
 function applyTemplateToTimer() {
+    if (!isFullAdmin()) return;
+
     const t = currentTemplate();
 
     clearInterval(state.timer.interval);
@@ -2757,6 +2771,8 @@ function editTemplate(name) {
 }
 
 function deleteTemplate(name) {
+    if (!isFullAdmin()) return;
+
     if (Object.keys(state.templates).length <= 1) return;
 
     if (!confirm(`Удалить шаблон "${name}"?`)) return;
@@ -2867,6 +2883,8 @@ function updatePointsConfig() {
 }
 
 function savePointsConfig() {
+    if (!isFullAdmin()) return;
+
     const count = parseInt($('prizePlacesCount').value) || 3;
     const places = [];
     let sum = 0;
@@ -3086,6 +3104,8 @@ function renderTournamentOverview() {
 }
 
 function saveTournamentMainSettings() {
+    if (!isFullAdmin()) return;
+
     state.tournament.name = $('tournamentNameInput').value.trim() || 'Покерный турнир';
     state.tournament.date = $('tournamentDateInput').value;
     state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 500;
@@ -3209,6 +3229,8 @@ function updateTournamentLevel(index, field, value) {
 }
 
 function addTournamentLevel() {
+    if (!isFullAdmin()) return;
+
     const template = currentTemplate();
     const last = template.levels[template.levels.length - 1];
 
@@ -3223,6 +3245,8 @@ function addTournamentLevel() {
 }
 
 function deleteTournamentLevel(index) {
+    if (!isFullAdmin()) return;
+
     const template = currentTemplate();
 
     if (template.levels.length <= 1) {
@@ -3239,6 +3263,8 @@ function deleteTournamentLevel(index) {
 }
 
 function saveTournamentStructure() {
+    if (!isFullAdmin()) return;
+
     const template = currentTemplate();
 
     if (state.timer.isRunning) {
@@ -3320,6 +3346,8 @@ function renderTournamentPlayers() {
 }
 
 function addTournamentPlayer() {
+    if (!isFullAdmin()) return;
+
     const name = $('tournamentPlayerName').value.trim();
     const chips = parseInt($('tournamentPlayerChips').value) || state.tournament.startingChips || 500;
 
@@ -3357,6 +3385,8 @@ function removeTournamentPlayer(id) {
 }
 
 function clearTournamentPlayers() {
+    if (!isFullAdmin()) return;
+
     if (!confirm('Очистить всех участников и сетку?')) return;
 
     state.grid.players = [];
@@ -3462,6 +3492,8 @@ function renderTournamentPrizeRows() {
 }
 
 function saveTournamentPoints() {
+    if (!isFullAdmin()) return;
+
     const count = parseInt($('tournamentPrizePlacesCount').value) || 3;
 
     let sum = 0;
@@ -4592,7 +4624,7 @@ init();
          * игроков — трогать её здесь не нужно, чтобы не было гонки
          * состояний между двумя функциями.
          */
-        if (state.isAdmin) {
+        if (isFullAdmin()) {
             if (tablesContainer) tablesContainer.style.display = '';
             return;
         }
@@ -4625,7 +4657,7 @@ init();
          * у админа там своя панель добавления участников
          * с очками (playerRegistrationSection).
          */
-        if (state.isAdmin) {
+        if (isFullAdmin()) {
             if (registrationBtn) registrationBtn.style.display = 'inline-block';
             if (gridRegisterBtn) gridRegisterBtn.style.display = 'none';
             return;
@@ -4661,7 +4693,7 @@ init();
     }
 
     function toggleGuestRegistrationVisibility() {
-        if (!state.isAdmin) {
+        if (!isFullAdmin()) {
             alert('Только админ может менять видимость регистрации');
             return;
         }
@@ -4695,7 +4727,7 @@ init();
     }
 
     function toggleGuestGridVisibility() {
-        if (!state.isAdmin) {
+        if (!isFullAdmin()) {
             alert('Только админ может менять видимость сетки');
             return;
         }
@@ -5537,5 +5569,3 @@ init();
     });
 
 })();
-
-
