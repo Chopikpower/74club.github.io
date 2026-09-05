@@ -290,8 +290,12 @@
     <div class="modal-content" style="max-width:400px;">
         <div class="modal-header">🔐 Вход</div>
         <div class="form-group">
+            <label>Логин</label>
+            <input type="text" id="adminUsernameInput" placeholder="admin" autocomplete="username">
+        </div>
+        <div class="form-group">
             <label>Пароль</label>
-            <input type="password" id="adminPasswordInput" placeholder="Введите пароль">
+            <input type="password" id="adminPasswordInput" placeholder="Введите пароль" autocomplete="current-password">
         </div>
         <div class="modal-actions">
             <button class="btn btn-secondary" id="cancelLoginBtn">Отмена</button>
@@ -337,18 +341,25 @@
 const SUPABASE_URL = 'https://db2.74club.ru';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWxpdGUiLCJpYXQiOjE3ODY5NDg1MzQsImV4cCI6MjEwMjMwODUzNH0.swVB5vREO4eBxc_VgehUWyxSpHMP4daj75b9Ia36zzQ';
 
-// Тот же единственный админ, что и в app.js — вход через RPC-функцию
-// verify_admin_password (проверка bcrypt на стороне БД), статус хранится
+// Та же система логинов/ролей, что и в app.js — вход через RPC-функцию
+// verify_admin_login (проверка bcrypt на стороне БД), статус хранится
 // в localStorage устройства — на db2 нет Supabase Auth (GoTrue).
 const ADMIN_LOCAL_FLAG = 'pokerAdminV2b';
+const ADMIN_USER_FLAG = 'pokerAdminUserV2c';
+const ADMIN_ROLE_FLAG = 'pokerAdminRoleV2c';
 
 let supabaseClient = null;
 let tournamentId = null;
 let players = [];
 let isAdmin = false;
+let adminRole = null;
 let editingId = null;
 let agreementAccepted = false;
 let guestRegistrationVisible = true;
+
+function isFullAdmin() {
+    return isAdmin && adminRole !== 'timer_only';
+}
 
 const DEFAULT_AGREEMENT_TEXT = `Регистрируясь в клубе, я подтверждаю, что:
 1. Указанные мной данные (имя и номер телефона) достоверны.
@@ -369,6 +380,7 @@ async function initSupabase() {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     isAdmin = !!(localStorage.getItem(ADMIN_LOCAL_FLAG) === 'true');
+    adminRole = localStorage.getItem(ADMIN_ROLE_FLAG) || null;
     updateAuthUI();
 
     const { data: t, error: tErr } = await supabaseClient
@@ -409,7 +421,7 @@ async function loadSettingsBits() {
 }
 
 async function saveAgreementText(text) {
-    if (!isAdmin || !tournamentId) return;
+    if (!isFullAdmin() || !tournamentId) return;
     try {
         const { error } = await supabaseClient
             .from('settings')
@@ -488,8 +500,8 @@ function sortPlayers() {
  * RENDER
  ************************************************************/
 function renderTable() {
-    $('phoneHeader').style.display = isAdmin ? '' : 'none';
-    $('actionsHeader').style.display = isAdmin ? '' : 'none';
+    $('phoneHeader').style.display = isFullAdmin() ? '' : 'none';
+    $('actionsHeader').style.display = isFullAdmin() ? '' : 'none';
 
     const body = $('playersBody');
     body.innerHTML = '';
@@ -508,7 +520,7 @@ function renderTable() {
             <td class="num">${Number(p.points) || 0}</td>
             <td class="num">🏆 ${Number(p.cups) || 0}</td>
         `;
-        if (isAdmin) {
+        if (isFullAdmin()) {
             rowHtml += `<td>${escapeHtml(p.phone || '—')}</td>`;
             rowHtml += `<td><button class="btn btn-secondary btn-small" onclick="openEditModal('${p.id}')">✏️ Изменить</button></td>`;
         }
@@ -528,7 +540,7 @@ function updateAuthUI() {
     $('userRole').textContent = isAdmin ? 'Админ' : 'Гость';
     $('loginBtn').style.display = isAdmin ? 'none' : 'inline-block';
     $('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
-    $('exportPlayersBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    $('exportPlayersBtn').style.display = isFullAdmin() ? 'inline-block' : 'none';
 
     // Полная шапка — только для админа (там рабочие кнопки).
     // Гостю показываем только маленькую незаметную строку внизу.
@@ -549,9 +561,9 @@ function applyRegistrationVisibility() {
     const btn = $('openRegisterBtn');
     if (!btn) return;
 
-    btn.style.display = isAdmin ? 'inline-block' : 'none';
+    btn.style.display = isFullAdmin() ? 'inline-block' : 'none';
 
-    if (!isAdmin) {
+    if (!isFullAdmin()) {
         $('agreementModal').classList.remove('active');
         $('registerModal').classList.remove('active');
     }
@@ -573,7 +585,7 @@ function openAgreementModal() {
     $('agreementTextEdit').style.display = 'none';
     $('agreementTextView').textContent = agreementText;
 
-    $('editAgreementBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    $('editAgreementBtn').style.display = isFullAdmin() ? 'inline-block' : 'none';
     $('saveAgreementBtn').style.display = 'none';
 
     $('agreementModal').classList.add('active');
@@ -623,7 +635,7 @@ function openRegisterForm() {
     $('regPhone').value = '';
     $('regPoints').value = 0;
     $('regCups').value = 0;
-    $('regAdminFields').style.display = isAdmin ? 'grid' : 'none';
+    $('regAdminFields').style.display = isFullAdmin() ? 'grid' : 'none';
     $('registerModal').classList.add('active');
 }
 
@@ -633,8 +645,8 @@ $('submitRegisterBtn').onclick = async () => {
     const name = $('regName').value.trim();
     const phone = $('regPhone').value.trim();
     // Очки и кубки при регистрации задаёт только админ, гость всегда начинает с 0.
-    const points = isAdmin ? (parseInt($('regPoints').value, 10) || 0) : 0;
-    const cups = isAdmin ? (parseInt($('regCups').value, 10) || 0) : 0;
+    const points = isFullAdmin() ? (parseInt($('regPoints').value, 10) || 0) : 0;
+    const cups = isFullAdmin() ? (parseInt($('regCups').value, 10) || 0) : 0;
 
     if (!name) { alert('Введите имя'); return; }
     if (!phone) { alert('Введите сотовый номер'); return; }
@@ -659,7 +671,7 @@ $('submitRegisterBtn').onclick = async () => {
  * EXPORT (Имя + Сотовый номер), только админ
  ************************************************************/
 $('exportPlayersBtn').onclick = () => {
-    if (!isAdmin) return;
+    if (!isFullAdmin()) return;
     if (!players.length) {
         alert('Список игроков пуст — нечего сохранять.');
         return;
@@ -699,23 +711,37 @@ if ($('guestFooterLoginBtn')) {
 $('cancelLoginBtn').onclick = () => $('loginModal').classList.remove('active');
 
 $('confirmLoginBtn').onclick = async () => {
+    const username = $('adminUsernameInput').value;
     const entered = $('adminPasswordInput').value;
 
-    const { data, error } = await supabaseClient.rpc('verify_admin_password', { pwd: entered });
+    const { data, error } = await supabaseClient.rpc('verify_admin_login', {
+        p_username: String(username || '').trim(),
+        p_password: entered
+    });
 
-    if (!error && data) {
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (!error && row && row.ok) {
         localStorage.setItem(ADMIN_LOCAL_FLAG, 'true');
+        localStorage.setItem(ADMIN_USER_FLAG, String(username || '').trim());
+        localStorage.setItem(ADMIN_ROLE_FLAG, row.role);
         isAdmin = true;
+        adminRole = row.role;
         updateAuthUI();
         $('loginModal').classList.remove('active');
+        $('adminUsernameInput').value = '';
+        $('adminPasswordInput').value = '';
     } else {
-        alert('Неверный пароль');
+        alert('Неверный логин или пароль');
     }
 };
 
 $('logoutBtn').onclick = () => {
     localStorage.removeItem(ADMIN_LOCAL_FLAG);
+    localStorage.removeItem(ADMIN_USER_FLAG);
+    localStorage.removeItem(ADMIN_ROLE_FLAG);
     isAdmin = false;
+    adminRole = null;
     updateAuthUI();
 };
 
@@ -723,7 +749,7 @@ $('logoutBtn').onclick = () => {
  * EDIT / DELETE (только админ)
  ************************************************************/
 function openEditModal(id) {
-    if (!isAdmin) return;
+    if (!isFullAdmin()) return;
     const p = players.find(pl => pl.id === id);
     if (!p) return;
     editingId = id;
@@ -738,6 +764,8 @@ window.openEditModal = openEditModal;
 $('cancelEditBtn').onclick = () => $('editModal').classList.remove('active');
 
 $('saveEditBtn').onclick = async () => {
+    if (!isFullAdmin()) return;
+
     const name = $('editName').value.trim();
     if (!name) { alert('Введите имя'); return; }
 
@@ -763,6 +791,8 @@ $('saveEditBtn').onclick = async () => {
 };
 
 $('deletePlayerBtn').onclick = async () => {
+    if (!isFullAdmin()) return;
+
     if (!confirm('Удалить этого игрока?')) return;
 
     const { error } = await supabaseClient
