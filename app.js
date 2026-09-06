@@ -1268,6 +1268,20 @@ function renderPlayerList() {
 
         if (isFullAdmin()) {
             item.innerHTML = `
+                <div class="player-item-info" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <span>${index + 1}.</span>
+                    <input type="text" class="player-edit-name" data-id="${p.id}" value="${escapeHtml(p.name)}"
+                        style="width:150px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
+                    <input type="number" class="player-edit-chips" data-id="${p.id}" value="${p.chips}" min="0"
+                        style="width:90px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button class="btn btn-primary btn-small" onclick="savePlayerEdit(${p.id})">💾</button>
+                    <button class="btn btn-warning btn-small" onclick="removePlayer(${p.id})">✕</button>
+                </div>
+            `;
+        } else {
+            item.innerHTML = `
                 <div class="player-item-info">
                     <span class="player-item-name">${index + 1}. ${escapeHtml(p.name)}</span>
                     <span class="player-item-chips">${p.chips} очков</span>
@@ -5569,3 +5583,5 @@ init();
     });
 
 })();
+
+
