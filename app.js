@@ -180,6 +180,27 @@ function currentTemplate() {
     return state.templates[state.currentTemplate];
 }
 
+/**
+ * Длительность конкретного уровня в секундах. Если у уровня задано
+ * своё значение (level.duration) — используется оно, иначе общая
+ * настройка шаблона (t.levelDuration).
+ */
+function getLevelSeconds(t, levelNumber) {
+    const lvl = t.levels[levelNumber - 1];
+    const minutes = (lvl && lvl.duration) ? Number(lvl.duration) : Number(t.levelDuration);
+    return (minutes || 15) * 60;
+}
+
+/**
+ * Путь/данные звука для начала уровня. Если у уровня задан свой
+ * файл (level.sound) — используется он, иначе общий звук по
+ * умолчанию (sound/blind.mp3).
+ */
+function getLevelStartSound(t, levelNumber) {
+    const lvl = t.levels[levelNumber - 1];
+    return (lvl && lvl.sound) ? lvl.sound : 'sound/blind.mp3';
+}
+
 function shuffleArray(array) {
     const arr = [...array];
 
@@ -896,7 +917,7 @@ function moveToNextStage(baseTime = now()) {
         state.timer.currentLevel = next;
         state.timer.isBreak = false;
         state.timer.breakType = null;
-        setStageDuration(t.levelDuration * 60, baseTime);
+        setStageDuration(getLevelSeconds(t, next), baseTime);
         return;
     }
 
@@ -922,7 +943,7 @@ function moveToNextStage(baseTime = now()) {
     state.timer.currentLevel++;
     state.timer.isBreak = false;
     state.timer.breakType = null;
-    setStageDuration(t.levelDuration * 60, baseTime);
+    setStageDuration(getLevelSeconds(t, state.timer.currentLevel), baseTime);
 }
 
 function playStageSound() {
@@ -1016,8 +1037,8 @@ function resetTimer() {
 
     Object.assign(state.timer, {
         currentLevel: 1,
-        timeRemaining: t.levelDuration * 60,
-        totalLevelTime: t.levelDuration * 60,
+        timeRemaining: getLevelSeconds(t, 1),
+        totalLevelTime: getLevelSeconds(t, 1),
         elapsedTime: 0,
         isRunning: false,
         isPaused: false,
@@ -1074,7 +1095,7 @@ function prevLevel() {
     state.timer.isRunning = false;
     state.timer.isPaused = false;
     state.timer.tournamentEnded = false;
-    state.timer.totalLevelTime = t.levelDuration * 60;
+    state.timer.totalLevelTime = getLevelSeconds(t, state.timer.currentLevel);
     state.timer.timeRemaining = state.timer.totalLevelTime;
     state.timer.elapsedTime = 0;
     state.timer.targetEndTime = null;
@@ -2650,11 +2671,26 @@ function renderLevelsTable() {
 
     t.levels.forEach((level, index) => {
         const tr = document.createElement('tr');
+        const hasCustomSound = !!level.sound;
+        const durationValue = level.duration || t.levelDuration;
+
         tr.innerHTML = `
             <td><strong>${level.level}</strong></td>
             <td><input type="number" value="${level.sb}" onchange="updateLevel(${index}, 'sb', this.value)"></td>
             <td><input type="number" value="${level.bb}" onchange="updateLevel(${index}, 'bb', this.value)"></td>
             <td><input type="number" value="${level.ante}" onchange="updateLevel(${index}, 'ante', this.value)"></td>
+            <td><input type="number" min="1" value="${durationValue}" onchange="updateLevel(${index}, 'duration', this.value)" style="width:70px;"></td>
+            <td>
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:130px;">
+                    <label class="btn btn-secondary btn-small" style="cursor:pointer; margin:0; text-align:center;">
+                        📁 ${hasCustomSound ? 'Заменить' : 'Файл'}
+                        <input type="file" accept="audio/*" style="display:none;" onchange="handleLevelSoundUpload(${index}, this)">
+                    </label>
+                    ${hasCustomSound
+                        ? `<button class="btn btn-secondary btn-small" onclick="resetLevelSound(${index})">↺ По умолчанию</button>`
+                        : `<span style="font-size:11px; color:var(--text-muted); text-align:center;">sound/blind.mp3</span>`}
+                </div>
+            </td>
             <td><button class="btn btn-danger btn-small" onclick="deleteLevel(${index})">×</button></td>
         `;
         tbody.appendChild(tr);
@@ -2662,7 +2698,52 @@ function renderLevelsTable() {
 }
 
 function updateLevel(index, field, value) {
-    currentTemplate().levels[index][field] = parseInt(value) || 0;
+    if (!isFullAdmin()) return;
+
+    const t = currentTemplate();
+
+    if (field === 'duration') {
+        const minutes = parseInt(value) || t.levels[index].duration || t.levelDuration || 15;
+        t.levels[index].duration = Math.max(1, minutes);
+        return;
+    }
+
+    t.levels[index][field] = parseInt(value) || 0;
+}
+
+function handleLevelSoundUpload(index, inputEl) {
+    if (!isFullAdmin()) return;
+
+    const file = inputEl.files && inputEl.files[0];
+    if (!file) return;
+
+    if (file.size > 800 * 1024) {
+        alert('Файл слишком большой (макс. ~800КБ) — используйте короткий сигнал в mp3.');
+        inputEl.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        currentTemplate().levels[index].sound = e.target.result;
+        renderLevelsTable();
+        renderTournamentLevelsTable();
+    };
+
+    reader.onerror = () => {
+        alert('Не удалось прочитать файл');
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function resetLevelSound(index) {
+    if (!isFullAdmin()) return;
+
+    currentTemplate().levels[index].sound = null;
+    renderLevelsTable();
+    renderTournamentLevelsTable();
 }
 
 function deleteLevel(index) {
@@ -2691,7 +2772,9 @@ function addLevel() {
         level: t.levels.length + 1,
         sb: last.sb * 2,
         bb: last.bb * 2,
-        ante: last.ante ? last.ante * 2 : 0
+        ante: last.ante ? last.ante * 2 : 0,
+        duration: t.levelDuration,
+        sound: null
     });
 
     renderLevelsTable();
@@ -2722,8 +2805,8 @@ function applyTemplateToTimer() {
 
     Object.assign(state.timer, {
         currentLevel: 1,
-        timeRemaining: t.levelDuration * 60,
-        totalLevelTime: t.levelDuration * 60,
+        timeRemaining: getLevelSeconds(t, 1),
+        totalLevelTime: getLevelSeconds(t, 1),
         elapsedTime: 0,
         isRunning: false,
         isPaused: false,
@@ -3190,6 +3273,8 @@ function renderTournamentStructure() {
                             <th>SB</th>
                             <th>BB</th>
                             <th>Ante</th>
+                            <th>Минут</th>
+                            <th>Звук</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
@@ -3219,12 +3304,26 @@ function renderTournamentLevelsTable() {
 
     template.levels.forEach((level, index) => {
         const tr = document.createElement('tr');
+        const hasCustomSound = !!level.sound;
+        const durationValue = level.duration || template.levelDuration;
 
         tr.innerHTML = `
             <td><strong>${level.level}</strong></td>
             <td><input type="number" value="${level.sb}" onchange="updateTournamentLevel(${index}, 'sb', this.value)"></td>
             <td><input type="number" value="${level.bb}" onchange="updateTournamentLevel(${index}, 'bb', this.value)"></td>
             <td><input type="number" value="${level.ante}" onchange="updateTournamentLevel(${index}, 'ante', this.value)"></td>
+            <td><input type="number" min="1" value="${durationValue}" onchange="updateTournamentLevel(${index}, 'duration', this.value)" style="width:70px;"></td>
+            <td>
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:130px;">
+                    <label class="btn btn-secondary btn-small" style="cursor:pointer; margin:0; text-align:center;">
+                        📁 ${hasCustomSound ? 'Заменить' : 'Файл'}
+                        <input type="file" accept="audio/*" style="display:none;" onchange="handleLevelSoundUpload(${index}, this)">
+                    </label>
+                    ${hasCustomSound
+                        ? `<button class="btn btn-secondary btn-small" onclick="resetLevelSound(${index})">↺ По умолчанию</button>`
+                        : `<span style="font-size:11px; color:var(--text-muted); text-align:center;">sound/blind.mp3</span>`}
+                </div>
+            </td>
             <td>
                 <button class="btn btn-danger btn-small" onclick="deleteTournamentLevel(${index})">×</button>
             </td>
@@ -3235,9 +3334,17 @@ function renderTournamentLevelsTable() {
 }
 
 function updateTournamentLevel(index, field, value) {
+    if (!isFullAdmin()) return;
+
     const template = currentTemplate();
 
     if (!template.levels[index]) return;
+
+    if (field === 'duration') {
+        const minutes = parseInt(value) || template.levels[index].duration || template.levelDuration || 15;
+        template.levels[index].duration = Math.max(1, minutes);
+        return;
+    }
 
     template.levels[index][field] = parseInt(value) || 0;
 }
@@ -3252,7 +3359,9 @@ function addTournamentLevel() {
         level: template.levels.length + 1,
         sb: last.sb * 2,
         bb: last.bb * 2,
-        ante: last.ante ? last.ante * 2 : 0
+        ante: last.ante ? last.ante * 2 : 0,
+        duration: template.levelDuration,
+        sound: null
     });
 
     renderTournamentLevelsTable();
@@ -5071,6 +5180,17 @@ init();
 
     function getSoundSrc(type) {
         if (type === 'levelStart') {
+            const t = currentTemplate();
+            const levelSound = t && t.levels ? getLevelStartSound(t, state.timer.currentLevel) : null;
+
+            // getLevelStartSound уже возвращает дефолт 'sound/blind.mp3',
+            // если у уровня нет своего файла — поэтому свой файл уровня
+            // приоритетнее общих настроек, а общий дефолт срабатывает,
+            // только если ни у уровня, ни в общих настройках ничего нет.
+            if (levelSound && levelSound !== 'sound/blind.mp3') {
+                return levelSound;
+            }
+
             return state.settings?.customLevelSound ||
                 state.settings?.defaultBlindSound ||
                 DEFAULT_SOUNDS.levelStart;
@@ -5380,7 +5500,7 @@ init();
         state.timer.isRunning = false;
         state.timer.isPaused = false;
         state.timer.tournamentEnded = false;
-        state.timer.totalLevelTime = t.levelDuration * 60;
+        state.timer.totalLevelTime = getLevelSeconds(t, state.timer.currentLevel);
         state.timer.timeRemaining = state.timer.totalLevelTime;
         state.timer.elapsedTime = 0;
         state.timer.targetEndTime = null;
@@ -5404,8 +5524,8 @@ init();
 
         Object.assign(state.timer, {
             currentLevel: 1,
-            timeRemaining: t.levelDuration * 60,
-            totalLevelTime: t.levelDuration * 60,
+            timeRemaining: getLevelSeconds(t, 1),
+            totalLevelTime: getLevelSeconds(t, 1),
             elapsedTime: 0,
             isRunning: false,
             isPaused: false,
@@ -5583,5 +5703,3 @@ init();
     });
 
 })();
-
-
