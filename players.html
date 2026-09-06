@@ -348,6 +348,21 @@ const ADMIN_LOCAL_FLAG = 'pokerAdminV2b';
 const ADMIN_USER_FLAG = 'pokerAdminUserV2c';
 const ADMIN_ROLE_FLAG = 'pokerAdminRoleV2c';
 
+// Формат хранения (JSON.stringify/parse) должен совпадать с app.js —
+// localStorage общий для index.html и players.html на одном домене.
+function saveLocal(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+}
+
+function loadLocal(key, fallback = null) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 let supabaseClient = null;
 let tournamentId = null;
 let players = [];
@@ -379,8 +394,8 @@ async function initSupabase() {
     }
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    isAdmin = !!(localStorage.getItem(ADMIN_LOCAL_FLAG) === 'true');
-    adminRole = localStorage.getItem(ADMIN_ROLE_FLAG) || null;
+    isAdmin = !!loadLocal(ADMIN_LOCAL_FLAG, false);
+    adminRole = loadLocal(ADMIN_ROLE_FLAG, null);
     updateAuthUI();
 
     const { data: t, error: tErr } = await supabaseClient
@@ -722,9 +737,9 @@ $('confirmLoginBtn').onclick = async () => {
     const row = Array.isArray(data) ? data[0] : data;
 
     if (!error && row && row.ok) {
-        localStorage.setItem(ADMIN_LOCAL_FLAG, 'true');
-        localStorage.setItem(ADMIN_USER_FLAG, String(username || '').trim());
-        localStorage.setItem(ADMIN_ROLE_FLAG, row.role);
+        saveLocal(ADMIN_LOCAL_FLAG, true);
+        saveLocal(ADMIN_USER_FLAG, String(username || '').trim());
+        saveLocal(ADMIN_ROLE_FLAG, row.role);
         isAdmin = true;
         adminRole = row.role;
         updateAuthUI();
