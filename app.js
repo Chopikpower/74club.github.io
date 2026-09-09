@@ -37,7 +37,9 @@ const state = {
 	    name: 'Покерный турнир',
 	    date: '',
 	    startingChips: 500,
-	    maxPlayersPerTable: 6
+	    maxPlayersPerTable: 6,
+	    announcementEnabled: false,
+	    telegramNotify: false
 	},
 
     timer: {
@@ -644,6 +646,7 @@ function applySettingsRowV2(row) {
     updateSettingsUI();
     renderRating();
     renderRulesPage();
+    renderHubTournamentBanner();
 
     if ($('registrationAgreementModal') && $('registrationAgreementModal').classList.contains('active')) {
         renderRegistrationAgreement();
@@ -2600,6 +2603,7 @@ function saveRegistrationAgreement() {
 function acceptRegistrationAgreement() {
     $('registrationAgreementModal').classList.remove('active');
     $('registrationPlayerName').value = '';
+    if ($('registrationPlayerTelegram')) $('registrationPlayerTelegram').value = '';
     $('registrationFormModal').classList.add('active');
 }
 
@@ -2628,11 +2632,14 @@ function submitRegistration() {
     }
 
     const chips = Number(state.tournament.startingChips) || 500;
+    const telegramInput = $('registrationPlayerTelegram');
+    const telegram = telegramInput ? telegramInput.value.trim().replace(/^@/, '') : '';
 
     state.grid.players.push({
         id: uid(),
         name,
         chips,
+        telegram: telegram || null,
         eliminated: false,
         eliminationPlace: null
     });
@@ -2641,6 +2648,7 @@ function submitRegistration() {
     writeGridToCloudV2();
 
     nameInput.value = '';
+    if (telegramInput) telegramInput.value = '';
     $('registrationFormModal').classList.remove('active');
 
     renderPlayerList();
@@ -3045,6 +3053,40 @@ function loadPointsPreset() {
     $('pointsPresetModal').classList.remove('active');
 }
 /************************************************************
+ * HUB: TOURNAMENT ANNOUNCEMENT BANNER
+ ************************************************************/
+
+function renderHubTournamentBanner() {
+    const banner = $('hubTournamentBanner');
+    if (!banner) return;
+
+    const t = state.tournament || {};
+    const show = !!t.announcementEnabled;
+
+    banner.classList.toggle('active', show);
+    if (!show) return;
+
+    setText('hubTournamentBannerTitle', t.name || 'Покерный турнир');
+
+    const dateEl = $('hubTournamentBannerDate');
+    if (dateEl) {
+        if (t.date) {
+            const d = new Date(t.date);
+            dateEl.textContent = isNaN(d)
+                ? t.date
+                : d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+            dateEl.style.display = '';
+        } else {
+            dateEl.textContent = '';
+            dateEl.style.display = 'none';
+        }
+    }
+
+    const btn = $('hubTournamentBannerBtn');
+    if (btn) btn.onclick = openRegistrationEntry;
+}
+
+/************************************************************
  * TOURNAMENT PAGE
  ************************************************************/
 
@@ -3186,6 +3228,21 @@ function renderTournamentOverview() {
         </div>
 
         <div class="tournament-panel">
+            <h3>📣 Оповещение о турнире на главной</h3>
+            <p style="color:var(--text-muted); margin-bottom:12px;">
+                Если включено — на главной странице появляется анимированный блок с названием, датой и кнопкой «Регистрация».
+            </p>
+            <label class="form-group" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" id="tournamentAnnouncementEnabledInput" ${state.tournament.announcementEnabled ? 'checked' : ''}>
+                <span>Показывать оповещение о турнире на главной</span>
+            </label>
+            <label class="form-group" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" id="tournamentTelegramNotifyInput" ${state.tournament.telegramNotify ? 'checked' : ''}>
+                <span>🔔 Оповещать в Telegram (бот пришлёт анонс в группу и участникам)</span>
+            </label>
+        </div>
+
+        <div class="tournament-panel">
             <h3>👁 Видимость для гостей</h3>
             <div class="form-group">
                 <button class="btn" id="tournamentGuestGridToggleBtn" style="width:100%;"></button>
@@ -3208,6 +3265,8 @@ function saveTournamentMainSettings() {
     state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 500;
     state.tournament.maxPlayersPerTable = parseInt($('tournamentMaxPlayersInput').value) || 6;
     state.tournament.registrationLimit = parseInt($('tournamentRegistrationLimitInput').value) || 0;
+    state.tournament.announcementEnabled = !!($('tournamentAnnouncementEnabledInput') && $('tournamentAnnouncementEnabledInput').checked);
+    state.tournament.telegramNotify = !!($('tournamentTelegramNotifyInput') && $('tournamentTelegramNotifyInput').checked);
 
     state.grid.maxPlayersPerTable = state.tournament.maxPlayersPerTable;
 
@@ -3219,6 +3278,7 @@ function saveTournamentMainSettings() {
     saveGridData();
 
     applyRegistrationLimitUI();
+    renderHubTournamentBanner();
 
     alert('Настройки турнира сохранены');
     renderTournamentPage('overview');
@@ -3746,6 +3806,7 @@ function showPage(pageId) {
         history.replaceState(null, '', '#' + pageId);
     }
 
+    if (pageId === 'hubPage') renderHubTournamentBanner();
     if (pageId === 'ratingPage') renderRating();
     if (pageId === 'gridPage') renderTables();
     if (pageId === 'editorPage') {
@@ -4219,6 +4280,7 @@ async function init() {
     renderPlayerList();
     renderTables();
     renderRating();
+    renderHubTournamentBanner();
     updateAdminUI();
 
     await initSupabase();
