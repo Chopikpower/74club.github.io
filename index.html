@@ -228,6 +228,93 @@
             font-size: clamp(13px, 2vw, 15px);
         }
 
+        /* ===================== Баннер предстоящего турнира ===================== */
+
+        .hub-tournament-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            max-width: 640px;
+            margin: 0 auto 28px;
+            background: linear-gradient(135deg, rgba(107,20,57,0.55), rgba(42,17,64,0.75));
+            border: 1px solid rgba(212,175,55,0.35);
+            border-radius: 20px;
+            padding: clamp(20px, 4vw, 30px) clamp(22px, 4vw, 34px);
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            animation: hubFadeUp 0.5s ease both;
+        }
+
+        .hub-tournament-banner.active {
+            display: flex;
+        }
+
+        .hub-tournament-banner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(45deg, rgba(212,175,55,0.05) 0 2px, transparent 2px 30px);
+            pointer-events: none;
+        }
+
+        .hub-tournament-banner-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hub-tournament-banner-label {
+            font-size: clamp(11px, 1.6vw, 13px);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(232,199,102,0.65);
+            margin-bottom: 6px;
+        }
+
+        .hub-tournament-banner-title {
+            font-size: clamp(20px, 3.2vw, 28px);
+            font-weight: 800;
+            background: linear-gradient(90deg, #f2e6c9, #d4af37, #e8c766, #d4af37, #f2e6c9);
+            background-size: 300% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: hubBannerShine 4s linear infinite;
+        }
+
+        @keyframes hubBannerShine {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        .hub-tournament-banner-date {
+            margin-top: 6px;
+            font-size: clamp(13px, 2vw, 15px);
+            color: rgba(242,230,201,0.75);
+        }
+
+        .hub-tournament-banner-btn {
+            position: relative;
+            z-index: 1;
+            flex: 0 0 auto;
+            padding: 14px 30px;
+            font-size: 15px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--hub-gold), var(--hub-wine));
+            color: #1a0e2e;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            font-family: inherit;
+        }
+
+        .hub-tournament-banner-btn:hover {
+            transform: translateY(-2px);
+        }
+
         .hub-tiles {
             display: flex;
             flex-direction: column;
@@ -503,6 +590,7 @@
             font-size: clamp(24px, 4vw, 36px);
             color: var(--warning-color);
             letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
         }
 
         .blinds-display {
@@ -511,6 +599,7 @@
             font-weight: bold;
             color: var(--primary-color);
             margin: 10px 0;
+            text-shadow: 0 0 20px rgba(0, 191, 255, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -539,6 +628,7 @@
             color: white;
             margin: 20px 0;
             font-family: 'Courier New', monospace;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
         }
 
         .progress-container {
@@ -941,6 +1031,7 @@
             font-size: clamp(32px, 5vw, 48px);
             font-weight: bold;
             color: white;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(59, 130, 246, 0.8);
             letter-spacing: 8px;
             z-index: 5;
             pointer-events: none;
@@ -2097,6 +2188,15 @@
                 </div>
             </div>
 
+            <div class="hub-tournament-banner" id="hubTournamentBanner">
+                <div class="hub-tournament-banner-text">
+                    <div class="hub-tournament-banner-label">Предстоящий турнир</div>
+                    <div class="hub-tournament-banner-title" id="hubTournamentBannerTitle"></div>
+                    <div class="hub-tournament-banner-date" id="hubTournamentBannerDate"></div>
+                </div>
+                <button class="hub-tournament-banner-btn" id="hubTournamentBannerBtn">📝 Регистрация</button>
+            </div>
+
             <div class="hub-tiles">
                 <button class="hub-tile hub-tile--timer nav-btn" data-page="timerPage" style="--i:0">
                     <span class="hub-tile-icon">⏱️</span>
@@ -2674,8 +2774,12 @@
         <div class="modal-content">
             <div class="modal-header">📝 Регистрация участника</div>
             <div class="form-group">
-                <label>Ваше имя</label>
-                <input type="text" id="registrationPlayerName" placeholder="Введите имя">
+                <label>Ваш никнейм</label>
+                <input type="text" id="registrationPlayerName" placeholder="Введите никнейм">
+            </div>
+            <div class="form-group">
+                <label>Telegram (необязательно, для уведомлений о турнире)</label>
+                <input type="text" id="registrationPlayerTelegram" placeholder="@username">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelRegistrationFormBtn">← Назад к таймеру</button>
