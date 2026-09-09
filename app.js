@@ -3233,11 +3233,11 @@ function renderTournamentOverview() {
                 Если включено — на главной странице появляется анимированный блок с названием, датой и кнопкой «Регистрация».
             </p>
             <label class="form-group" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                <input type="checkbox" id="tournamentAnnouncementEnabledInput" ${state.tournament.announcementEnabled ? 'checked' : ''}>
+                <input type="checkbox" id="tournamentAnnouncementEnabledInput" style="width:auto; flex:0 0 auto;" ${state.tournament.announcementEnabled ? 'checked' : ''}>
                 <span>Показывать оповещение о турнире на главной</span>
             </label>
             <label class="form-group" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                <input type="checkbox" id="tournamentTelegramNotifyInput" ${state.tournament.telegramNotify ? 'checked' : ''}>
+                <input type="checkbox" id="tournamentTelegramNotifyInput" style="width:auto; flex:0 0 auto;" ${state.tournament.telegramNotify ? 'checked' : ''}>
                 <span>🔔 Оповещать в Telegram (бот пришлёт анонс в группу и участникам)</span>
             </label>
         </div>
