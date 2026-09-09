@@ -3771,7 +3771,53 @@ function renderTournamentRules() {
                     : ''
             }
         </div>
+
+        ${
+            state.isAdmin
+                ? `<div class="tournament-panel">
+                       <h3>📝 Текст соглашения при регистрации</h3>
+                       <p style="color:var(--text-muted); margin-bottom:12px;">
+                           Этот текст видят участники перед регистрацией на турнир — на сайте и в Telegram-боте — и должны принять его перед вводом ника.
+                       </p>
+                       <textarea id="tournamentRegistrationTextInput" style="
+                           width:100%;
+                           min-height:220px;
+                           resize:vertical;
+                           background:var(--bg-color);
+                           border:1px solid var(--border-color);
+                           border-radius:10px;
+                           color:var(--text-color);
+                           padding:16px;
+                           font-size:15px;
+                           line-height:1.6;
+                           box-sizing:border-box;
+                           font-family:inherit;
+                       "></textarea>
+                       <div class="tournament-actions" style="margin-top:15px;">
+                           <button class="btn btn-primary" onclick="saveTournamentRegistrationText()">💾 Сохранить текст соглашения</button>
+                       </div>
+                   </div>`
+                : ''
+        }
     `;
+
+    if (state.isAdmin && $('tournamentRegistrationTextInput')) {
+        $('tournamentRegistrationTextInput').value = state.registration.agreementText || '';
+    }
+}
+
+function saveTournamentRegistrationText() {
+    if (!isFullAdmin()) return;
+
+    const el = $('tournamentRegistrationTextInput');
+    if (!el) return;
+
+    state.registration.agreementText = el.value.trim();
+    localStorage.setItem('pokerRegistrationText', state.registration.agreementText);
+
+    writeSettingsToCloudV2();
+
+    alert('Текст соглашения сохранён');
 }
 
 /************************************************************
