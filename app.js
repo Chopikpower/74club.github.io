@@ -3254,6 +3254,11 @@ function renderTournamentOverview() {
                 </div>
 
                 <div class="form-group">
+                    <label>Время турнира</label>
+                    <input type="time" id="tournamentTimeInput" value="${escapeHtml(state.tournament.time || '')}">
+                </div>
+
+                <div class="form-group">
                     <label>Стартовые очки игрока</label>
                     <input type="number" id="tournamentStartingChipsInput" value="${Number(state.tournament.startingChips || 500)}" min="1">
                 </div>
@@ -3311,6 +3316,7 @@ function saveTournamentMainSettings() {
 
     state.tournament.name = $('tournamentNameInput').value.trim() || 'Покерный турнир';
     state.tournament.date = $('tournamentDateInput').value;
+    state.tournament.time = $('tournamentTimeInput') ? $('tournamentTimeInput').value : '';
     state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 500;
     state.tournament.maxPlayersPerTable = parseInt($('tournamentMaxPlayersInput').value) || 6;
     state.tournament.registrationLimit = parseInt($('tournamentRegistrationLimitInput').value) || 0;
