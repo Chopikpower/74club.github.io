@@ -530,6 +530,38 @@
             background: #8a1c4a;
         }
 
+        .grid-visible,
+        .grid-hidden,
+        .registration-visible,
+        .registration-hidden {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .grid-visible,
+        .registration-visible {
+            color: #4ade80;
+        }
+
+        .grid-visible:hover,
+        .registration-visible:hover {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .grid-hidden,
+        .registration-hidden {
+            color: #f87171;
+        }
+
+        .grid-hidden:hover,
+        .registration-hidden:hover {
+            border-color: #f87171;
+            background: rgba(248, 113, 113, 0.1);
+        }
+
         .btn-success {
             background: var(--success-color);
             color: #1a0e2e;
