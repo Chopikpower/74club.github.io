@@ -2736,11 +2736,15 @@ function renderLevelsTable() {
             <td><input type="number" value="${level.ante}" onchange="updateLevel(${index}, 'ante', this.value)"></td>
             <td><input type="number" min="1" value="${durationValue}" onchange="updateLevel(${index}, 'duration', this.value)" style="width:70px;"></td>
             <td>
-                <div style="display:flex; flex-direction:column; gap:4px; min-width:130px;">
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:150px;">
                     <label class="btn btn-secondary btn-small" style="cursor:pointer; margin:0; text-align:center;">
                         📁 ${hasCustomSound ? 'Заменить' : 'Файл'}
                         <input type="file" accept="audio/*" style="display:none;" onchange="handleLevelSoundUpload(${index}, this)">
                     </label>
+                    <input type="text" placeholder="или путь: sound/x.mp3"
+                        value="${(hasCustomSound && !level.sound.startsWith('data:')) ? escapeHtml(level.sound) : ''}"
+                        style="font-size:11px; padding:4px 6px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; color:var(--text-color);"
+                        onchange="setLevelSoundPath(${index}, this.value)">
                     ${hasCustomSound
                         ? `<button class="btn btn-secondary btn-small" onclick="resetLevelSound(${index})">↺ По умолчанию</button>`
                         : `<span style="font-size:11px; color:var(--text-muted); text-align:center;">sound/blind.mp3</span>`}
@@ -2791,6 +2795,17 @@ function handleLevelSoundUpload(index, inputEl) {
     };
 
     reader.readAsDataURL(file);
+}
+
+function setLevelSoundPath(index, path) {
+    if (!isFullAdmin()) return;
+
+    path = (path || '').trim();
+
+    currentTemplate().levels[index].sound = path || null;
+
+    renderLevelsTable();
+    renderTournamentLevelsTable();
 }
 
 function resetLevelSound(index) {
@@ -3426,11 +3441,15 @@ function renderTournamentLevelsTable() {
             <td><input type="number" value="${level.ante}" onchange="updateTournamentLevel(${index}, 'ante', this.value)"></td>
             <td><input type="number" min="1" value="${durationValue}" onchange="updateTournamentLevel(${index}, 'duration', this.value)" style="width:70px;"></td>
             <td>
-                <div style="display:flex; flex-direction:column; gap:4px; min-width:130px;">
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:150px;">
                     <label class="btn btn-secondary btn-small" style="cursor:pointer; margin:0; text-align:center;">
                         📁 ${hasCustomSound ? 'Заменить' : 'Файл'}
                         <input type="file" accept="audio/*" style="display:none;" onchange="handleLevelSoundUpload(${index}, this)">
                     </label>
+                    <input type="text" placeholder="или путь: sound/x.mp3"
+                        value="${(hasCustomSound && !level.sound.startsWith('data:')) ? escapeHtml(level.sound) : ''}"
+                        style="font-size:11px; padding:4px 6px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; color:var(--text-color);"
+                        onchange="setLevelSoundPath(${index}, this.value)">
                     ${hasCustomSound
                         ? `<button class="btn btn-secondary btn-small" onclick="resetLevelSound(${index})">↺ По умолчанию</button>`
                         : `<span style="font-size:11px; color:var(--text-muted); text-align:center;">sound/blind.mp3</span>`}
