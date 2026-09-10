@@ -1652,8 +1652,12 @@ function openPlayerAction(player, tableId) {
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:20px;">
             <button class="btn btn-primary" onclick="updatePlayerChips()">💾 Обновить очки</button>
-            <button class="btn btn-warning" onclick="openMovePlayer()">🔄 Пересадить</button>
-            <button class="btn btn-danger" onclick="eliminatePlayer()">❌ Выбивание</button>
+            ${
+                player.eliminated
+                    ? `<button class="btn btn-success" onclick="restorePlayer()">↩️ Вернуть в игру</button>`
+                    : `<button class="btn btn-warning" onclick="openMovePlayer()">🔄 Пересадить</button>
+                       <button class="btn btn-danger" onclick="eliminatePlayer()">❌ Выбивание</button>`
+            }
         </div>
     `;
 
@@ -1768,6 +1772,49 @@ function eliminatePlayer() {
     if (!selected) return;
 
     markEliminated(selected.player.id);
+
+    $('playerActionModal').classList.remove('active');
+
+    renderTables();
+    renderRating();
+    saveGridData();
+}
+
+function restorePlayer() {
+    if (!isFullAdmin()) return;
+
+    const selected = state.grid.selectedPlayer;
+    if (!selected) return;
+
+    const id = selected.player.id;
+
+    const player = state.grid.players.find(p => p.id === id);
+    if (!player || !player.eliminated) return;
+
+    player.eliminated = false;
+
+    /**
+     * Убираем игрока из истории выбываний — места оставшихся
+     * выбывших пересчитаются сами (getPlayersWithPlaces смотрит
+     * только на текущий флаг eliminated, а не на позицию в массиве).
+     */
+    const orderIndex = state.grid.eliminationOrder.indexOf(id);
+    if (orderIndex !== -1) state.grid.eliminationOrder.splice(orderIndex, 1);
+
+    state.grid.tables.forEach(t => {
+        t.players.forEach(p => {
+            if (p.id === id) p.eliminated = false;
+        });
+    });
+
+    /**
+     * Если из-за возврата игрока в игре снова оказалось больше одного
+     * активного участника — турнир не может считаться завершённым.
+     */
+    const stillActive = state.grid.players.filter(p => !p.eliminated);
+    if (stillActive.length > 1) {
+        state.grid.tournamentEnded = false;
+    }
 
     $('playerActionModal').classList.remove('active');
 
