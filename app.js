@@ -3120,7 +3120,7 @@ function renderHubTournamentBanner() {
         const rulesText = (state.rules && state.rules.text) ? state.rules.text.trim() : '';
 
         if (rulesText) {
-            const maxLen = 180;
+            const maxLen = 320;
             rulesEl.textContent = rulesText.length > maxLen
                 ? rulesText.slice(0, maxLen).trim() + '…'
                 : rulesText;
