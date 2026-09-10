@@ -3068,17 +3068,19 @@ function renderHubTournamentBanner() {
 
     setText('hubTournamentBannerTitle', t.name || 'Покерный турнир');
 
-    const dateEl = $('hubTournamentBannerDate');
-    if (dateEl) {
-        if (t.date) {
-            const d = new Date(t.date);
-            dateEl.textContent = isNaN(d)
-                ? t.date
-                : d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
-            dateEl.style.display = '';
+    const rulesEl = $('hubTournamentBannerDate');
+    if (rulesEl) {
+        const rulesText = (state.rules && state.rules.text) ? state.rules.text.trim() : '';
+
+        if (rulesText) {
+            const maxLen = 180;
+            rulesEl.textContent = rulesText.length > maxLen
+                ? rulesText.slice(0, maxLen).trim() + '…'
+                : rulesText;
+            rulesEl.style.display = '';
         } else {
-            dateEl.textContent = '';
-            dateEl.style.display = 'none';
+            rulesEl.textContent = '';
+            rulesEl.style.display = 'none';
         }
     }
 
