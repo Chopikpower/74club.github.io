@@ -3288,6 +3288,7 @@ function renderTournamentOverview() {
 
             <div class="tournament-actions">
                 <button class="btn btn-primary" onclick="saveTournamentMainSettings()">💾 Сохранить настройки</button>
+                <button class="btn btn-success" onclick="createTournamentAndAnnounce()">🚀 Создать турнир</button>
                 <button class="btn btn-secondary" onclick="setTournamentTab('structure')">⏱ Настроить уровни</button>
                 <button class="btn btn-secondary" onclick="setTournamentTab('players')">👥 Участники</button>
             </div>
@@ -3323,7 +3324,7 @@ function renderTournamentOverview() {
     updateAdminFeatureButtons();
 }
 
-function saveTournamentMainSettings() {
+function saveTournamentMainSettings(silent) {
     if (!isFullAdmin()) return;
 
     state.tournament.name = $('tournamentNameInput').value.trim() || 'Покерный турнир';
@@ -3347,8 +3348,65 @@ function saveTournamentMainSettings() {
     applyRegistrationLimitUI();
     renderHubTournamentBanner();
 
-    alert('Настройки турнира сохранены');
+    if (!silent) {
+        alert('Настройки турнира сохранены');
+    }
     renderTournamentPage('overview');
+}
+
+/**
+ * «Создать турнир» — сохраняет настройки (как обычная кнопка «Сохранить»)
+ * и, если включена галочка «Оповещать в Telegram», сбрасывает флаги
+ * creation_notified/start_notified в settings на сервере. Их видит
+ * бот (опрос раз в 8 секунд) и рассылает оповещение в группу + всем,
+ * кто писал ему в личку — про создание сразу, про старт турнира
+ * автоматически в указанные дату и время.
+ */
+async function createTournamentAndAnnounce() {
+    if (!isFullAdmin()) return;
+
+    saveTournamentMainSettings(true);
+
+    if (!state.tournament.telegramNotify) {
+        alert(
+            'Турнир создан и настройки сохранены.\n\n' +
+            'Чтобы бот прислал оповещение в группу и участникам — включите галочку ' +
+            '«🔔 Оповещать в Telegram» и нажмите «🚀 Создать турнир» ещё раз.'
+        );
+        return;
+    }
+
+    if (!supabaseClient) {
+        alert('Турнир создан локально, но не удалось связаться с сервером для оповещения — проверьте подключение и повторите.');
+        return;
+    }
+
+    const id = await ensureTournamentIdV2();
+
+    if (!id) {
+        alert('Не удалось определить турнир для оповещения — попробуйте ещё раз.');
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from('settings')
+        .update({
+            creation_notified: false,
+            start_notified: false
+        })
+        .eq('tournament_id', id);
+
+    if (error) {
+        console.error('Ошибка сброса флагов оповещения:', error);
+        alert('Турнир создан, но не удалось запустить оповещение в Telegram — попробуйте нажать ещё раз.');
+        return;
+    }
+
+    alert(
+        '🚀 Турнир создан!\n\n' +
+        'Бот отправит оповещение в группу и всем, кто писал ему в Telegram, в течение ~15 секунд.\n\n' +
+        'Оповещение о старте турнира придёт автоматически в указанные дату и время.'
+    );
 }
 
 /************************************************************
