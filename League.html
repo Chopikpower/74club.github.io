@@ -9,15 +9,16 @@
 
 <style>
   :root{
-    --felt:#0E3B2E;
-    --felt-deep:#082922;
-    --felt-line: rgba(239,230,211,0.14);
-    --cream:#EFE6D3;
-    --cream-dim: rgba(239,230,211,0.68);
-    --gold:#CBA135;
-    --gold-soft: rgba(203,161,53,0.16);
+    --felt:#241533;
+    --felt-deep:#150b22;
+    --felt-line: rgba(212,175,55,0.14);
+    --cream:#F2E6C9;
+    --cream-dim: rgba(242,230,201,0.68);
+    --gold:#D4AF37;
+    --gold-soft: rgba(212,175,55,0.16);
+    --wine:#6B1439;
     --red:#9C4152;
-    --ink:#12251D;
+    --ink:#1A0E2E;
     --radius: 18px;
   }
 
@@ -219,42 +220,26 @@
   }
 
   .felt-table{
-    position:relative;
-    width:172px;
-    height:112px;
-    border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #1c5442, #0c2a20);
-    border:6px solid rgba(18,37,29,0.55);
+    width:100%;
+    max-width:380px;
     margin:0 auto 10px;
   }
 
-  .seat{
-    position:absolute;
-    width:18px;
-    height:18px;
-    border-radius:50%;
-    top:50%;
-    left:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:10px;
-    font-weight:700;
-    color:var(--ink);
-    border:2px solid rgba(18,37,29,0.5);
-    transition:transform .2s ease;
+  .final-table-svg{
+    width:100%;
+    height:auto;
+    display:block;
+    filter: drop-shadow(0 12px 24px rgba(0,0,0,0.5));
   }
 
-  .seat:hover{
-    transform:translate(-50%,-50%) scale(1.18) !important;
+  .final-seat{
+    transition: transform .2s ease;
+    transform-origin: center;
+    transform-box: fill-box;
   }
 
-  .seat.gold{
-    background:var(--gold);
-  }
-
-  .seat.open{
-    background:var(--cream);
+  .final-seat:hover{
+    transform: scale(1.15);
   }
 
   .table-caption{
@@ -583,6 +568,32 @@
       transform:none;
     }
   }
+
+  .league-logo{
+    display:block;
+    width:clamp(110px, 18vw, 150px);
+    height:clamp(110px, 18vw, 150px);
+    margin:0 auto;
+    animation: leagueLogoFloat 3.5s ease-in-out infinite;
+  }
+
+  @keyframes leagueLogoFloat{
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+  }
+
+  .league-logo-title{
+    text-align:center;
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(34px, 6vw, 54px);
+    letter-spacing:0.03em;
+    color:var(--cream);
+    margin-top:14px;
+    text-shadow:
+      0 2px 0 rgba(8,41,34,0.9),
+      0 8px 20px rgba(0,0,0,0.45),
+      0 0 44px rgba(212,175,55,0.35);
+  }
 </style>
 </head>
 
@@ -591,7 +602,24 @@
   <div class="wrap hero">
     <div class="eyebrow">Клуб Покеристов</div>
 	<br>
-     <img src="img/Logo.png" alt="Лига Чпокеристов" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+    <svg class="league-logo" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Лига Чпокеристов">
+      <defs>
+        <linearGradient id="leagueLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#D4AF37"/>
+          <stop offset="100%" stop-color="#6B1439"/>
+        </linearGradient>
+        <filter id="leagueLogoGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <rect x="8" y="8" width="144" height="144" rx="32" fill="url(#leagueLogoGrad)" filter="url(#leagueLogoGlow)"/>
+      <text x="80" y="112" font-family="Georgia, serif" font-size="86" font-weight="700" fill="#1A0E2E" text-anchor="middle">&#9824;</text>
+    </svg>
+    <div class="league-logo-title">Лига Чпокеристов</div>
 	<br>
     <p class="subtitle">
       ✳️ Открыт Осенний сезон "Лиги Чпокеристов" 2026. <br><br> 
@@ -837,8 +865,70 @@
   function buildTable(container, total, goldCount, goldLabel, openLabel){
     container.innerHTML = '';
 
-    const cx = 80, cy = 50;
-    const radiusX = 54, radiusY = 30;
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const cx = 200, cy = 130;
+    const radiusX = 160, radiusY = 86;
+
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 400 260');
+    svg.setAttribute('class', 'final-table-svg');
+
+    const defs = document.createElementNS(svgNS, 'defs');
+    defs.innerHTML = `
+      <radialGradient id="feltGrad" cx="35%" cy="28%" r="75%">
+        <stop offset="0%" stop-color="#1c5442"/>
+        <stop offset="100%" stop-color="#0a251b"/>
+      </radialGradient>
+      <linearGradient id="railGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#D4AF37"/>
+        <stop offset="100%" stop-color="#6B1439"/>
+      </linearGradient>
+      <radialGradient id="seatGoldGrad" cx="35%" cy="28%" r="75%">
+        <stop offset="0%" stop-color="#F3D778"/>
+        <stop offset="100%" stop-color="#B8892A"/>
+      </radialGradient>
+    `;
+    svg.appendChild(defs);
+
+    const rail = document.createElementNS(svgNS, 'ellipse');
+    rail.setAttribute('cx', cx); rail.setAttribute('cy', cy);
+    rail.setAttribute('rx', radiusX + 18); rail.setAttribute('ry', radiusY + 18);
+    rail.setAttribute('fill', 'url(#railGrad)');
+    svg.appendChild(rail);
+
+    const felt = document.createElementNS(svgNS, 'ellipse');
+    felt.setAttribute('cx', cx); felt.setAttribute('cy', cy);
+    felt.setAttribute('rx', radiusX); felt.setAttribute('ry', radiusY);
+    felt.setAttribute('fill', 'url(#feltGrad)');
+    svg.appendChild(felt);
+
+    const bettingLine = document.createElementNS(svgNS, 'ellipse');
+    bettingLine.setAttribute('cx', cx); bettingLine.setAttribute('cy', cy);
+    bettingLine.setAttribute('rx', radiusX - 34); bettingLine.setAttribute('ry', radiusY - 20);
+    bettingLine.setAttribute('fill', 'none');
+    bettingLine.setAttribute('stroke', 'rgba(212,175,55,0.35)');
+    bettingLine.setAttribute('stroke-width', '2');
+    bettingLine.setAttribute('stroke-dasharray', '4 7');
+    svg.appendChild(bettingLine);
+
+    const trophy = document.createElementNS(svgNS, 'text');
+    trophy.setAttribute('x', cx); trophy.setAttribute('y', cy - 6);
+    trophy.setAttribute('text-anchor', 'middle');
+    trophy.setAttribute('font-size', '32');
+    trophy.textContent = '🏆';
+    svg.appendChild(trophy);
+
+    const centerText = document.createElementNS(svgNS, 'text');
+    centerText.setAttribute('x', cx); centerText.setAttribute('y', cy + 24);
+    centerText.setAttribute('text-anchor', 'middle');
+    centerText.setAttribute('font-family', "'Bebas Neue', sans-serif");
+    centerText.setAttribute('font-size', '20');
+    centerText.setAttribute('letter-spacing', '2');
+    centerText.setAttribute('fill', 'rgba(242,230,201,0.85)');
+    centerText.textContent = 'ФИНАЛЬНЫЙ СТОЛ';
+    svg.appendChild(centerText);
+
+    container.appendChild(svg);
 
     // Sample the ellipse finely and build a cumulative arc-length table,
     // so seats are spaced evenly along the actual perimeter (not just by angle).
@@ -868,19 +958,54 @@
 
     for(let i = 0; i < total; i++){
       const angle = angleAtArcFraction(i / total);
-      const x = cx + radiusX * Math.cos(angle);
-      const y = cy + radiusY * Math.sin(angle);
-
-      const seat = document.createElement('div');
+      const x = cx + (radiusX + 20) * Math.cos(angle);
+      const y = cy + (radiusY + 20) * Math.sin(angle);
       const isGold = i < goldCount;
 
-      seat.className = 'seat ' + (isGold ? 'gold' : 'open');
-      seat.style.left = x + 'px';
-      seat.style.top = y + 'px';
-      seat.style.transform = 'translate(-50%,-50%)';
-      seat.title = isGold ? (goldLabel || 'С этапа 1') : (openLabel || 'Открытая регистрация');
+      const seatG = document.createElementNS(svgNS, 'g');
+      seatG.setAttribute('class', 'final-seat');
 
-      container.appendChild(seat);
+      const title = document.createElementNS(svgNS, 'title');
+      title.textContent = isGold ? (goldLabel || 'Финалист') : (openLabel || 'Открытая регистрация');
+      seatG.appendChild(title);
+
+      const ring = document.createElementNS(svgNS, 'circle');
+      ring.setAttribute('cx', x); ring.setAttribute('cy', y);
+      ring.setAttribute('r', 20);
+      ring.setAttribute('fill', isGold ? 'url(#seatGoldGrad)' : '#F2E6C9');
+      ring.setAttribute('stroke', '#1A0E2E');
+      ring.setAttribute('stroke-width', '2');
+      seatG.appendChild(ring);
+
+      const head = document.createElementNS(svgNS, 'circle');
+      head.setAttribute('cx', x); head.setAttribute('cy', y - 6);
+      head.setAttribute('r', 6.5);
+      head.setAttribute('fill', '#1A0E2E');
+      seatG.appendChild(head);
+
+      const shoulders = document.createElementNS(svgNS, 'path');
+      shoulders.setAttribute('d', `M ${x - 12} ${y + 14} Q ${x} ${y - 3} ${x + 12} ${y + 14} Z`);
+      shoulders.setAttribute('fill', '#1A0E2E');
+      seatG.appendChild(shoulders);
+
+      const numBg = document.createElementNS(svgNS, 'circle');
+      numBg.setAttribute('cx', x + 15); numBg.setAttribute('cy', y + 15);
+      numBg.setAttribute('r', 8);
+      numBg.setAttribute('fill', '#6B1439');
+      numBg.setAttribute('stroke', '#F2E6C9');
+      numBg.setAttribute('stroke-width', '1');
+      seatG.appendChild(numBg);
+
+      const numText = document.createElementNS(svgNS, 'text');
+      numText.setAttribute('x', x + 15); numText.setAttribute('y', y + 18.5);
+      numText.setAttribute('text-anchor', 'middle');
+      numText.setAttribute('font-size', '9');
+      numText.setAttribute('font-weight', '700');
+      numText.setAttribute('fill', '#F2E6C9');
+      numText.textContent = i + 1;
+      seatG.appendChild(numText);
+
+      svg.appendChild(seatG);
     }
   }
 
