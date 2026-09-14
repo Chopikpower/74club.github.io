@@ -1247,7 +1247,7 @@ function playDefaultSound(src) {
 
 function addPlayer() {
     const name = $('playerName').value.trim();
-    const chips = parseInt($('playerChips').value) || 500;
+    const chips = parseInt($('playerChips').value) || 20;
 
     if (!name) {
         alert('Введите имя участника');
@@ -1263,7 +1263,7 @@ function addPlayer() {
     });
 
     $('playerName').value = '';
-    $('playerChips').value = 500;
+    $('playerChips').value = 20;
 
     renderPlayerList();
     saveGridData();
@@ -1407,7 +1407,7 @@ function addPlayerToGrid() {
     if (!isFullAdmin()) return;
 
     const name = $('newPlayerName').value.trim();
-    const chips = parseInt($('newPlayerChips').value) || 500;
+    const chips = parseInt($('newPlayerChips').value) || 20;
 
     if (!name) {
         alert('Введите имя участника');
@@ -1436,7 +1436,7 @@ function addPlayerToGrid() {
     }
 
     $('newPlayerName').value = '';
-    $('newPlayerChips').value = 500;
+    $('newPlayerChips').value = 20;
 
     renderPlayerList();
     renderTables();
@@ -2133,7 +2133,7 @@ function loadPlayersFromFile() {
                 state.grid.players = players.map((p, index) => ({
                     id: uid() + index,
                     name: String(p.name || p.player || p.имя || '').trim(),
-                    chips: parseInt(p.chips || p.points || p.очки) || 500,
+                    chips: parseInt(p.chips || p.points || p.очки) || 20,
                     eliminated: false,
                     eliminationPlace: null
                 })).filter(p => p.name);
@@ -2171,7 +2171,7 @@ function parsePlayersFile(text, filename) {
             const parts = line.includes(';') ? line.split(';') : line.split(',');
             return {
                 name: parts[0],
-                chips: parts[1] || 500
+                chips: parts[1] || 20
             };
         });
 }
@@ -2678,7 +2678,7 @@ function submitRegistration() {
         return;
     }
 
-    const chips = Number(state.tournament.startingChips) || 500;
+    const chips = Number(state.tournament.startingChips) || 20;
     const telegramInput = $('registrationPlayerTelegram');
     const telegram = telegramInput ? telegramInput.value.trim().replace(/^@/, '') : '';
 
@@ -3272,7 +3272,7 @@ function renderTournamentOverview() {
 
                 <div class="form-group">
                     <label>Стартовые очки игрока</label>
-                    <input type="number" id="tournamentStartingChipsInput" value="${Number(state.tournament.startingChips || 500)}" min="1">
+                    <input type="number" id="tournamentStartingChipsInput" value="${Number(state.tournament.startingChips || 20)}" min="1">
                 </div>
 
                 <div class="form-group">
@@ -3330,7 +3330,7 @@ function saveTournamentMainSettings(silent) {
     state.tournament.name = $('tournamentNameInput').value.trim() || 'Покерный турнир';
     state.tournament.date = $('tournamentDateInput').value;
     state.tournament.time = $('tournamentTimeInput') ? $('tournamentTimeInput').value : '';
-    state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 500;
+    state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 20;
     state.tournament.maxPlayersPerTable = parseInt($('tournamentMaxPlayersInput').value) || 6;
     state.tournament.registrationLimit = parseInt($('tournamentRegistrationLimitInput').value) || 0;
     state.tournament.announcementEnabled = !!($('tournamentAnnouncementEnabledInput') && $('tournamentAnnouncementEnabledInput').checked);
@@ -3635,7 +3635,7 @@ function renderTournamentPlayers() {
 
                 <div class="form-group">
                     <label>Очки</label>
-                    <input type="number" id="tournamentPlayerChips" value="${Number(state.tournament.startingChips || 500)}" min="1">
+                    <input type="number" id="tournamentPlayerChips" value="${Number(state.tournament.startingChips || 20)}" min="1">
                 </div>
 
                 <div class="form-group" style="display:flex; align-items:flex-end;">
@@ -3661,7 +3661,7 @@ function addTournamentPlayer() {
     if (!isFullAdmin()) return;
 
     const name = $('tournamentPlayerName').value.trim();
-    const chips = parseInt($('tournamentPlayerChips').value) || state.tournament.startingChips || 500;
+    const chips = parseInt($('tournamentPlayerChips').value) || state.tournament.startingChips || 20;
 
     if (!name) {
         alert('Введите имя участника');
