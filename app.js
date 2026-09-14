@@ -36,7 +36,7 @@ const state = {
 	tournament: {
 	    name: 'Покерный турнир',
 	    date: '',
-	    startingChips: 500,
+	    startingChips: 20,
 	    maxPlayersPerTable: 6,
 	    announcementEnabled: false,
 	    telegramNotify: false
@@ -1272,7 +1272,7 @@ function addPlayer() {
 function removePlayer(id) {
     if (!isFullAdmin()) return;
 
-    state.grid.players = state.grid.players.filter(p => p.id !== id);
+    state.grid.players = state.grid.players.filter(p => String(p.id) !== String(id));
     renderPlayerList();
     saveGridData();
 }
@@ -1300,8 +1300,8 @@ function renderPlayerList() {
                         style="width:90px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
                 </div>
                 <div style="display:flex; gap:6px;">
-                    <button class="btn btn-primary btn-small" onclick="savePlayerEdit(${p.id})">💾</button>
-                    <button class="btn btn-warning btn-small" onclick="removePlayer(${p.id})">✕</button>
+                    <button class="btn btn-primary btn-small" onclick="savePlayerEdit('${String(p.id).replace(/'/g, "\\'")}')">💾</button>
+                    <button class="btn btn-warning btn-small" onclick="removePlayer('${String(p.id).replace(/'/g, "\\'")}')">✕</button>
                 </div>
             `;
         } else {
@@ -1333,7 +1333,7 @@ function savePlayerEdit(id) {
         return;
     }
 
-    const duplicate = state.grid.players.some(p => Number(p.id) !== Number(id) && p.name.trim().toLowerCase() === newName.toLowerCase());
+    const duplicate = state.grid.players.some(p => String(p.id) !== String(id) && p.name.trim().toLowerCase() === newName.toLowerCase());
 
     if (duplicate) {
         alert('Участник с таким именем уже есть в списке');
@@ -1341,7 +1341,7 @@ function savePlayerEdit(id) {
     }
 
     state.grid.players.forEach(p => {
-        if (Number(p.id) === Number(id)) {
+        if (String(p.id) === String(id)) {
             p.name = newName;
             p.chips = newChips;
         }
@@ -1349,7 +1349,7 @@ function savePlayerEdit(id) {
 
     state.grid.tables.forEach(t => {
         t.players.forEach(p => {
-            if (Number(p.id) === Number(id)) {
+            if (String(p.id) === String(id)) {
                 p.name = newName;
                 p.chips = newChips;
             }
@@ -2133,7 +2133,7 @@ function loadPlayersFromFile() {
                 state.grid.players = players.map((p, index) => ({
                     id: uid() + index,
                     name: String(p.name || p.player || p.имя || '').trim(),
-                    chips: parseInt(p.chips || p.points || p.очки) || 20,
+                    chips: parseInt(p.chips || p.points || p.очки) || 500,
                     eliminated: false,
                     eliminationPlace: null
                 })).filter(p => p.name);
@@ -3617,7 +3617,7 @@ function renderTournamentPlayers() {
                 </div>
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <span>${player.chips} очков</span>
-                    <button class="btn btn-danger btn-small" onclick="removeTournamentPlayer(${player.id})">Удалить</button>
+                    <button class="btn btn-danger btn-small" onclick="removeTournamentPlayer('${String(player.id).replace(/'/g, "\\'")}')">Удалить</button>
                 </div>
             </div>
         `).join('')
@@ -3684,10 +3684,10 @@ function addTournamentPlayer() {
 function removeTournamentPlayer(id) {
     if (!confirm('Удалить участника?')) return;
 
-    state.grid.players = state.grid.players.filter(p => p.id !== id);
+    state.grid.players = state.grid.players.filter(p => String(p.id) !== String(id));
 
     state.grid.tables.forEach(table => {
-        table.players = table.players.filter(p => p.id !== id);
+        table.players = table.players.filter(p => String(p.id) !== String(id));
     });
 
     saveGridData();
