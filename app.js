@@ -940,6 +940,11 @@ function moveToNextStage(baseTime = now()) {
         state.timer.isBreak = true;
         state.timer.breakType = 'regular';
         setStageDuration(t.breakDuration * 60, baseTime);
+
+        if (isFullAdmin() && state.grid.gridCreated) {
+            performTableReshuffle(true);
+        }
+
         return;
     }
 
@@ -1307,7 +1312,7 @@ function renderPlayerList() {
         } else {
             item.innerHTML = `
                 <div class="player-item-info">
-                    <span class="player-item-name">${index + 1}. ${escapeHtml(p.name)}</span>
+                    <span class="player-item-name">${index + 1}. ${p.bounty ? '🪙 ' : ''}${escapeHtml(p.name)}</span>
                     <span class="player-item-chips">${p.chips} очков</span>
                 </div>
             `;
@@ -1608,11 +1613,11 @@ function renderTables() {
 
             seat.innerHTML = `
                 <div class="seat-number">#${player.seatNumber}</div>
-                <div class="seat-name">${escapeHtml(player.name)}</div>
+                <div class="seat-name">${player.bounty ? '🪙 ' : ''}${escapeHtml(player.name)}</div>
                 <div class="seat-chips">${player.chips}</div>
             `;
 
-            if (state.isAdmin) {
+            if (isFullAdmin()) {
                 seat.onclick = () => openPlayerAction(player, table.id);
             }
 
@@ -1635,6 +1640,10 @@ function renderTables() {
 
     if ($('finalTableSection')) {
         $('finalTableSection').style.display = isFullAdmin() && state.grid.players.length > 0 ? 'block' : 'none';
+    }
+
+    if ($('gridExtraActions')) {
+        $('gridExtraActions').style.display = isFullAdmin() && state.grid.gridCreated ? 'flex' : 'none';
     }
 }
 
@@ -1990,6 +1999,191 @@ function createFinalTable() {
     saveGridData();
 
     alert(`Финальный стол сформирован из ${shuffled.length} игроков`);
+}
+
+/************************************************************
+ * СЛУЧАЙНАЯ ПЕРЕСАДКА МЕЖДУ СТОЛАМИ
+ *
+ * Раз в обычный перерыв (и по кнопке вручную) выбирается случайный
+ * номер места (от 1 до макс. игроков за столом). Все игроки, которые
+ * сидят на этом месте — на КАЖДОМ столе — сдвигаются по кругу на
+ * следующий стол: стол 1 → стол 2 → стол 3 → ... → обратно на стол 1.
+ * Столы, где на этом месте никто не сидит, просто пропускаются.
+ ************************************************************/
+
+function getMaxSeatNumber() {
+    let max = Number(state.grid.maxPlayersPerTable) || 0;
+
+    state.grid.tables.forEach(table => {
+        table.players.forEach(p => {
+            max = Math.max(max, Number(p.seatNumber) || 0);
+        });
+    });
+
+    return max;
+}
+
+function performTableReshuffle(silent) {
+    if (!isFullAdmin()) return null;
+
+    const tables = state.grid.tables;
+
+    if (!tables || tables.length < 2) {
+        if (!silent) alert('Для пересадки нужно минимум 2 стола');
+        return null;
+    }
+
+    const maxSeat = getMaxSeatNumber();
+    if (maxSeat < 1) return null;
+
+    const seat = Math.floor(Math.random() * maxSeat) + 1;
+
+    const sortedTables = [...tables].sort((a, b) => String(a.id).localeCompare(String(b.id), 'ru', { numeric: true }));
+
+    const occupied = [];
+    sortedTables.forEach((table, idx) => {
+        const p = table.players.find(pl => Number(pl.seatNumber) === seat && !pl.eliminated);
+        if (p) occupied.push({ tableIdx: idx, player: p });
+    });
+
+    if (occupied.length < 2) {
+        if (!silent) alert(`На месте №${seat} недостаточно игроков для пересадки — попробуйте ещё раз`);
+        return null;
+    }
+
+    const moves = occupied.map((o, i) => {
+        const toTableIdx = occupied[(i + 1) % occupied.length].tableIdx;
+        return {
+            player: o.player,
+            fromTableIdx: o.tableIdx,
+            toTableIdx,
+            fromTableId: sortedTables[o.tableIdx].id,
+            toTableId: sortedTables[toTableIdx].id
+        };
+    });
+
+    // Снимаем всех перемещаемых игроков с исходных мест...
+    occupied.forEach(o => {
+        sortedTables[o.tableIdx].players = sortedTables[o.tableIdx].players.filter(p => p.id !== o.player.id);
+    });
+
+    // ...и рассаживаем на новые столы (на то же по номеру место).
+    moves.forEach(m => {
+        sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: seat });
+    });
+
+    renderTables();
+    saveGridData();
+
+    const summary = moves.map(m => ({
+        name: m.player.name,
+        seat,
+        fromTable: m.fromTableId,
+        toTable: m.toTableId
+    }));
+
+    queueBotEvent('reshuffle', { seat, moves: summary });
+
+    return { seat, moves: summary };
+}
+
+function manualReshuffleTables() {
+    if (!isFullAdmin()) return;
+    if (!confirm('Случайно пересадить игроков между столами?')) return;
+
+    const result = performTableReshuffle(false);
+
+    if (result) {
+        const lines = result.moves.map(m => `${m.name}: стол ${m.fromTable} → стол ${m.toTable}`);
+        alert(`🎲 Пересадка (место №${result.seat}):\n\n${lines.join('\n')}`);
+    }
+}
+
+/************************************************************
+ * BOUNTY
+ *
+ * Просто пометка на игроке (🪙) — админ сам вручную учитывает очки
+ * тому, кто выбьет Bounty-игрока. Никакой авто-начисление очков
+ * тут не считается.
+ ************************************************************/
+
+function assignBounty() {
+    if (!isFullAdmin()) return;
+
+    const active = state.grid.players.filter(p => !p.eliminated);
+
+    if (active.length === 0) {
+        alert('Нет активных игроков');
+        return;
+    }
+
+    const countStr = prompt('Сколько Bounty назначить?', '1');
+    if (!countStr) return;
+    const count = Math.max(1, Math.min(active.length, parseInt(countStr) || 1));
+
+    const amountStr = prompt('Сколько очков за каждый Bounty?', '50');
+    if (amountStr === null) return;
+    const amount = Math.max(0, parseInt(amountStr) || 0);
+
+    const pool = shuffleArray(shuffleArray(active.filter(p => !p.bounty)));
+    const chosen = pool.slice(0, count);
+
+    if (chosen.length === 0) {
+        alert('Все активные игроки уже отмечены как Bounty');
+        return;
+    }
+
+    chosen.forEach(chosenPlayer => {
+        const inGrid = state.grid.players.find(p => p.id === chosenPlayer.id);
+        if (inGrid) {
+            inGrid.bounty = true;
+            inGrid.bountyAmount = amount;
+        }
+
+        state.grid.tables.forEach(table => {
+            const inTable = table.players.find(p => p.id === chosenPlayer.id);
+            if (inTable) {
+                inTable.bounty = true;
+                inTable.bountyAmount = amount;
+            }
+        });
+    });
+
+    renderPlayerList();
+    renderTables();
+    saveGridData();
+
+    const names = chosen.map(p => p.name);
+
+    queueBotEvent('bounty', { amount, players: names });
+
+    alert(`🪙 Bounty назначен (${amount} очков): ${names.join(', ')}`);
+}
+
+/************************************************************
+ * Очередь событий для Telegram-бота. Бот опрашивает таблицу
+ * bot_events раз в несколько секунд и рассылает оповещение в
+ * группу + всем, кто писал ему в личку — по этому же принципу,
+ * что и оповещения о создании/старте турнира.
+ ************************************************************/
+
+async function queueBotEvent(eventType, payload) {
+    if (!isFullAdmin() || !supabaseClient) return;
+
+    const id = await ensureTournamentIdV2();
+    if (!id) return;
+
+    const { error } = await supabaseClient
+        .from('bot_events')
+        .insert({
+            tournament_id: id,
+            event_type: eventType,
+            payload
+        });
+
+    if (error) {
+        console.error('Не удалось поставить событие в очередь для бота:', error);
+    }
 }
 
 function endTournament() {
@@ -4273,6 +4467,14 @@ function resetAll() {
     $('addPlayerToGridBtn').onclick = addPlayerToGrid;
     $('createFinalTableBtn').onclick = createFinalTable;
     $('endTournamentBtn').onclick = endTournament;
+
+    if ($('reshuffleTablesBtn')) {
+        $('reshuffleTablesBtn').onclick = manualReshuffleTables;
+    }
+
+    if ($('assignBountyBtn')) {
+        $('assignBountyBtn').onclick = assignBounty;
+    }
 
     if ($('clearForNextTournamentBtn')) {
         $('clearForNextTournamentBtn').onclick = clearTournamentPlayers;
