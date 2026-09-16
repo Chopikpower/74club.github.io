@@ -941,7 +941,13 @@ function moveToNextStage(baseTime = now()) {
         state.timer.breakType = 'regular';
         setStageDuration(t.breakDuration * 60, baseTime);
 
-        if (isFullAdmin() && state.grid.gridCreated) {
+        // Автопересадка — только на первых двух обычных перерывах,
+        // дальше (если нужно) админ делает это вручную кнопкой.
+        const breakNumber = t.breakEveryNLevels > 0
+            ? Math.round(Number(state.timer.currentLevel) / Number(t.breakEveryNLevels))
+            : 0;
+
+        if (isFullAdmin() && state.grid.gridCreated && breakNumber >= 1 && breakNumber <= 2) {
             performTableReshuffle(true);
         }
 
