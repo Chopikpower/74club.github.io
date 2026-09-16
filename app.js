@@ -1224,6 +1224,134 @@ function updateTimerDisplay() {
     } else {
         setText('timerStatus', 'Готов');
     }
+
+    updateBreakBanner();
+}
+
+/************************************************************
+ * ПОЛНОЭКРАННЫЙ БАННЕР ПЕРЕРЫВА
+ *
+ * Показывается всем (и админу, и гостям) на странице таймера, пока
+ * идёт перерыв: название перерыва, обратный отсчёт и список столов
+ * с игроками (актуален сразу после пересадки). Последние 10 секунд —
+ * отсчёт краснеет и пульсирует, с тиканьем на каждую секунду.
+ ************************************************************/
+
+let breakBannerActive = false;
+let breakBannerLastBeepSecond = null;
+let breakBeepAudioCtx = null;
+
+function ensureBreakBeepContext() {
+    if (!breakBeepAudioCtx) {
+        try {
+            breakBeepAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch {
+            breakBeepAudioCtx = null;
+        }
+    }
+
+    if (breakBeepAudioCtx && breakBeepAudioCtx.state === 'suspended') {
+        breakBeepAudioCtx.resume().catch(() => {});
+    }
+
+    return breakBeepAudioCtx;
+}
+
+function playTickBeep() {
+    const ctx = ensureBreakBeepContext();
+    if (!ctx) return;
+
+    try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.16);
+    } catch (e) {
+        console.warn('Не удалось воспроизвести тиканье отсчёта:', e);
+    }
+}
+
+function renderBreakBannerTables() {
+    const container = $('breakBannerTables');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const sortedTables = [...state.grid.tables].sort((a, b) =>
+        String(a.id).localeCompare(String(b.id), 'ru', { numeric: true })
+    );
+
+    sortedTables.forEach(table => {
+        const activePlayers = table.players
+            .filter(p => !p.eliminated)
+            .sort((a, b) => Number(a.seatNumber) - Number(b.seatNumber));
+
+        if (activePlayers.length === 0) return;
+
+        const box = document.createElement('div');
+        box.className = 'break-banner-table';
+
+        const rows = activePlayers
+            .map(p => `<div class="player-row">#${p.seatNumber} ${p.bounty ? '🪙 ' : ''}${escapeHtml(p.name)}</div>`)
+            .join('');
+
+        box.innerHTML = `<h4>Стол ${escapeHtml(String(table.id))}</h4>${rows}`;
+        container.appendChild(box);
+    });
+}
+
+function updateBreakBanner() {
+    const banner = $('breakBanner');
+    if (!banner) return;
+
+    const shouldShow = !!state.timer.isBreak && !state.timer.tournamentEnded;
+
+    if (!shouldShow) {
+        if (breakBannerActive) {
+            banner.classList.remove('active');
+            breakBannerActive = false;
+            breakBannerLastBeepSecond = null;
+        }
+        return;
+    }
+
+    if (!breakBannerActive) {
+        banner.classList.add('active');
+        breakBannerActive = true;
+        renderBreakBannerTables();
+    }
+
+    setText('breakBannerTitle', state.timer.breakType === 'big' ? '⏸ БОЛЬШОЙ ПЕРЕРЫВ' : '⏸ ПЕРЕРЫВ');
+
+    const remaining = Math.max(0, Number(state.timer.timeRemaining) || 0);
+    const countdownEl = $('breakBannerCountdown');
+
+    if (countdownEl) {
+        countdownEl.textContent = formatTime(remaining);
+        countdownEl.classList.toggle('urgent', remaining <= 10 && remaining > 0);
+    }
+
+    const wholeSecond = Math.ceil(remaining);
+
+    if (wholeSecond <= 10 && wholeSecond >= 1) {
+        if (wholeSecond !== breakBannerLastBeepSecond) {
+            breakBannerLastBeepSecond = wholeSecond;
+            playTickBeep();
+        }
+    } else {
+        breakBannerLastBeepSecond = null;
+    }
 }
 
 /************************************************************
@@ -5607,6 +5735,10 @@ init();
      ************************************************************/
 
     function unlockAudio() {
+        if (typeof ensureBreakBeepContext === 'function') {
+            ensureBreakBeepContext();
+        }
+
         if (audioUnlocked) return;
 
         try {
