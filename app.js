@@ -958,6 +958,14 @@ function moveToNextStage(baseTime = now()) {
     state.timer.isBreak = false;
     state.timer.breakType = null;
     setStageDuration(getLevelSeconds(t, state.timer.currentLevel), baseTime);
+
+    // Перерыв закончился — подсветка "кого пересадило" больше не
+    // актуальна для следующего перерыва, убираем (пишет только
+    // реальный админ, чтобы гости не слали свою копию в облако).
+    if (isFullAdmin() && state.grid.lastReshuffle) {
+        state.grid.lastReshuffle = null;
+        saveGridData();
+    }
 }
 
 function playStageSound() {
@@ -1292,6 +1300,8 @@ function renderBreakBannerTables() {
         String(a.id).localeCompare(String(b.id), 'ru', { numeric: true })
     );
 
+    const movedIds = new Set(state.grid.lastReshuffle?.playerIds || []);
+
     sortedTables.forEach(table => {
         const activePlayers = table.players
             .filter(p => !p.eliminated)
@@ -1303,7 +1313,10 @@ function renderBreakBannerTables() {
         box.className = 'break-banner-table';
 
         const rows = activePlayers
-            .map(p => `<div class="player-row">#${p.seatNumber} ${p.bounty ? '🪙 ' : ''}${escapeHtml(p.name)}</div>`)
+            .map(p => {
+                const moved = movedIds.has(p.id) ? ' reshuffled' : '';
+                return `<div class="player-row${moved}">#${p.seatNumber} ${p.bounty ? '🪙 ' : ''}${escapeHtml(p.name)}</div>`;
+            })
             .join('');
 
         box.innerHTML = `<h4>Стол ${escapeHtml(String(table.id))}</h4>${rows}`;
@@ -2225,6 +2238,11 @@ function performTableReshuffle(silent) {
     moves.forEach(m => {
         sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: seat });
     });
+
+    // Запоминаем, кого именно пересадило — чтобы подсветить их в
+    // полноэкранном баннере перерыва (видно всем, не только админу,
+    // т.к. это часть общих данных сетки).
+    state.grid.lastReshuffle = { seat, playerIds: moves.map(m => m.player.id) };
 
     renderTables();
     saveGridData();
