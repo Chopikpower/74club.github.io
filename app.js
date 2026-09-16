@@ -2046,14 +2046,31 @@ function performTableReshuffle(silent) {
 
     const sortedTables = [...tables].sort((a, b) => String(a.id).localeCompare(String(b.id), 'ru', { numeric: true }));
 
+    // На каждом столе отдельно ищем игрока начиная с выпавшего места
+    // и спускаясь вниз (5, 4, 3...), пока не найдём занятое место —
+    // так стол не выпадает из пересадки просто потому, что именно
+    // это место у него пустое.
     const occupied = [];
     sortedTables.forEach((table, idx) => {
-        const p = table.players.find(pl => Number(pl.seatNumber) === seat && !pl.eliminated);
-        if (p) occupied.push({ tableIdx: idx, player: p });
+        let foundPlayer = null;
+        let actualSeat = null;
+
+        for (let s = seat; s >= 1; s--) {
+            const p = table.players.find(pl => Number(pl.seatNumber) === s && !pl.eliminated);
+            if (p) {
+                foundPlayer = p;
+                actualSeat = s;
+                break;
+            }
+        }
+
+        if (foundPlayer) {
+            occupied.push({ tableIdx: idx, player: foundPlayer, actualSeat });
+        }
     });
 
     if (occupied.length < 2) {
-        if (!silent) alert(`На месте №${seat} недостаточно игроков для пересадки — попробуйте ещё раз`);
+        if (!silent) alert(`На месте №${seat} (и ниже) недостаточно игроков для пересадки — попробуйте ещё раз`);
         return null;
     }
 
@@ -2064,7 +2081,8 @@ function performTableReshuffle(silent) {
             fromTableIdx: o.tableIdx,
             toTableIdx,
             fromTableId: sortedTables[o.tableIdx].id,
-            toTableId: sortedTables[toTableIdx].id
+            toTableId: sortedTables[toTableIdx].id,
+            actualSeat: o.actualSeat
         };
     });
 
@@ -2073,7 +2091,9 @@ function performTableReshuffle(silent) {
         sortedTables[o.tableIdx].players = sortedTables[o.tableIdx].players.filter(p => p.id !== o.player.id);
     });
 
-    // ...и рассаживаем на новые столы (на то же по номеру место).
+    // ...и рассаживаем на новые столы. Место K на столе-получателе к
+    // этому моменту гарантированно свободно: либо его занимал тот, кто
+    // сам уже уехал дальше по цепочке, либо оно и так было пустым.
     moves.forEach(m => {
         sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: seat });
     });
@@ -2084,6 +2104,7 @@ function performTableReshuffle(silent) {
     const summary = moves.map(m => ({
         name: m.player.name,
         seat,
+        actualSeat: m.actualSeat,
         fromTable: m.fromTableId,
         toTable: m.toTableId
     }));
@@ -2100,7 +2121,10 @@ function manualReshuffleTables() {
     const result = performTableReshuffle(false);
 
     if (result) {
-        const lines = result.moves.map(m => `${m.name}: стол ${m.fromTable} → стол ${m.toTable}`);
+        const lines = result.moves.map(m => {
+            const note = m.actualSeat !== result.seat ? ` (было место ${m.actualSeat})` : '';
+            return `${m.name}: стол ${m.fromTable} → стол ${m.toTable}${note}`;
+        });
         alert(`🎲 Пересадка (место №${result.seat}):\n\n${lines.join('\n')}`);
     }
 }
