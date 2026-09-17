@@ -941,14 +941,16 @@ function moveToNextStage(baseTime = now()) {
         state.timer.breakType = 'regular';
         setStageDuration(t.breakDuration * 60, baseTime);
 
-        // Автопересадка — только на первых двух обычных перерывах,
-        // дальше (если нужно) админ делает это вручную кнопкой.
+        // Автопересадка — на первых N обычных перерывах (настраивается
+        // в разделе «Турнир»), дальше админ делает это вручную кнопкой.
         const breakNumber = t.breakEveryNLevels > 0
             ? Math.round(Number(state.timer.currentLevel) / Number(t.breakEveryNLevels))
             : 0;
+        const autoBreaksLimit = Number(state.tournament?.autoReshuffleBreaksCount ?? 2);
+        const seatsPerReshuffle = Math.max(1, Number(state.tournament?.autoReshuffleSeatsCount ?? 1));
 
-        if (isFullAdmin() && state.grid.gridCreated && breakNumber >= 1 && breakNumber <= 2) {
-            performTableReshuffle(true);
+        if (isFullAdmin() && state.grid.gridCreated && breakNumber >= 1 && breakNumber <= autoBreaksLimit) {
+            performTableReshuffle(true, seatsPerReshuffle);
         }
 
         return;
@@ -1342,10 +1344,21 @@ function updateBreakBanner() {
     if (!breakBannerActive) {
         banner.classList.add('active');
         breakBannerActive = true;
-        renderBreakBannerTables();
     }
 
-    setText('breakBannerTitle', state.timer.breakType === 'big' ? '⏸ БОЛЬШОЙ ПЕРЕРЫВ' : '⏸ ПЕРЕРЫВ');
+    // Перерисовываем каждый тик (не только при первом открытии) —
+    // иначе у гостей подсветка "кого пересадило" может не успеть
+    // подтянуться (сетка синкается отдельным опросом с задержкой),
+    // либо пропасть, если баннер уже был открыт до пересадки.
+    renderBreakBannerTables();
+
+    setText('breakBannerTitle', state.timer.breakType === 'big' ? 'БОЛЬШОЙ ПЕРЕРЫВ' : 'ПЕРЕРЫВ');
+
+    const pauseBtn = $('breakBannerPauseBtn');
+    if (pauseBtn) {
+        pauseBtn.style.display = isFullAdmin() ? 'inline-flex' : 'none';
+        pauseBtn.textContent = state.timer.isRunning ? '⏸' : '▶';
+    }
 
     const remaining = Math.max(0, Number(state.timer.timeRemaining) || 0);
     const countdownEl = $('breakBannerCountdown');
@@ -2170,7 +2183,7 @@ function getMaxSeatNumber() {
     return max;
 }
 
-function performTableReshuffle(silent) {
+function performTableReshuffle(silent, seatsCount) {
     if (!isFullAdmin()) return null;
 
     const tables = state.grid.tables;
@@ -2183,95 +2196,123 @@ function performTableReshuffle(silent) {
     const maxSeat = getMaxSeatNumber();
     if (maxSeat < 1) return null;
 
-    const seat = Math.floor(Math.random() * maxSeat) + 1;
-
+    const count = Math.max(1, Math.min(Number(seatsCount) || 1, maxSeat));
     const sortedTables = [...tables].sort((a, b) => String(a.id).localeCompare(String(b.id), 'ru', { numeric: true }));
 
-    // На каждом столе отдельно ищем игрока начиная с выпавшего места
-    // и спускаясь вниз (5, 4, 3...), пока не найдём занятое место —
-    // так стол не выпадает из пересадки просто потому, что именно
-    // это место у него пустое.
-    const occupied = [];
-    sortedTables.forEach((table, idx) => {
-        let foundPlayer = null;
-        let actualSeat = null;
+    const usedSeats = new Set();
+    const allMoves = [];
+    const movedPlayerIds = [];
+    const seatsUsedList = [];
 
-        for (let s = seat; s >= 1; s--) {
-            const p = table.players.find(pl => Number(pl.seatNumber) === s && !pl.eliminated);
-            if (p) {
-                foundPlayer = p;
-                actualSeat = s;
-                break;
+    for (let attempt = 0; attempt < count; attempt++) {
+        const available = [];
+        for (let s = 1; s <= maxSeat; s++) {
+            if (!usedSeats.has(s)) available.push(s);
+        }
+        if (available.length === 0) break;
+
+        const seat = available[Math.floor(Math.random() * available.length)];
+        usedSeats.add(seat);
+
+        // На каждом столе отдельно ищем игрока начиная с выпавшего
+        // места и спускаясь вниз (5, 4, 3...), пока не найдём занятое
+        // место — так стол не выпадает из пересадки просто потому,
+        // что именно это место у него пустое. Игроков, которых уже
+        // пересадило на предыдущем месте в этой же операции, не трогаем.
+        const occupied = [];
+        sortedTables.forEach((table, idx) => {
+            let foundPlayer = null;
+            let actualSeat = null;
+
+            for (let s = seat; s >= 1; s--) {
+                const p = table.players.find(pl =>
+                    Number(pl.seatNumber) === s && !pl.eliminated && !movedPlayerIds.includes(pl.id)
+                );
+                if (p) {
+                    foundPlayer = p;
+                    actualSeat = s;
+                    break;
+                }
             }
-        }
 
-        if (foundPlayer) {
-            occupied.push({ tableIdx: idx, player: foundPlayer, actualSeat });
-        }
-    });
+            if (foundPlayer) {
+                occupied.push({ tableIdx: idx, player: foundPlayer, actualSeat });
+            }
+        });
 
-    if (occupied.length < 2) {
-        if (!silent) alert(`На месте №${seat} (и ниже) недостаточно игроков для пересадки — попробуйте ещё раз`);
-        return null;
+        if (occupied.length < 2) continue;
+
+        const moves = occupied.map((o, i) => {
+            const toTableIdx = occupied[(i + 1) % occupied.length].tableIdx;
+            return {
+                player: o.player,
+                tableIdx: o.tableIdx,
+                toTableIdx,
+                fromTableId: sortedTables[o.tableIdx].id,
+                toTableId: sortedTables[toTableIdx].id,
+                actualSeat: o.actualSeat,
+                seat
+            };
+        });
+
+        // Снимаем всех перемещаемых игроков с исходных мест...
+        occupied.forEach(o => {
+            sortedTables[o.tableIdx].players = sortedTables[o.tableIdx].players.filter(p => p.id !== o.player.id);
+        });
+
+        // ...и рассаживаем на новые столы. Место K на столе-получателе к
+        // этому моменту гарантированно свободно: либо его занимал тот,
+        // кто сам уже уехал дальше по цепочке, либо оно и так было пустым.
+        moves.forEach(m => {
+            sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: seat });
+        });
+
+        moves.forEach(m => {
+            allMoves.push(m);
+            movedPlayerIds.push(m.player.id);
+        });
+        seatsUsedList.push(seat);
     }
 
-    const moves = occupied.map((o, i) => {
-        const toTableIdx = occupied[(i + 1) % occupied.length].tableIdx;
-        return {
-            player: o.player,
-            fromTableIdx: o.tableIdx,
-            toTableIdx,
-            fromTableId: sortedTables[o.tableIdx].id,
-            toTableId: sortedTables[toTableIdx].id,
-            actualSeat: o.actualSeat
-        };
-    });
-
-    // Снимаем всех перемещаемых игроков с исходных мест...
-    occupied.forEach(o => {
-        sortedTables[o.tableIdx].players = sortedTables[o.tableIdx].players.filter(p => p.id !== o.player.id);
-    });
-
-    // ...и рассаживаем на новые столы. Место K на столе-получателе к
-    // этому моменту гарантированно свободно: либо его занимал тот, кто
-    // сам уже уехал дальше по цепочке, либо оно и так было пустым.
-    moves.forEach(m => {
-        sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: seat });
-    });
+    if (allMoves.length === 0) {
+        if (!silent) alert('Недостаточно игроков для пересадки — попробуйте ещё раз');
+        return null;
+    }
 
     // Запоминаем, кого именно пересадило — чтобы подсветить их в
     // полноэкранном баннере перерыва (видно всем, не только админу,
     // т.к. это часть общих данных сетки).
-    state.grid.lastReshuffle = { seat, playerIds: moves.map(m => m.player.id) };
+    state.grid.lastReshuffle = { seats: seatsUsedList, playerIds: movedPlayerIds };
 
     renderTables();
     saveGridData();
 
-    const summary = moves.map(m => ({
+    const summary = allMoves.map(m => ({
         name: m.player.name,
-        seat,
+        seat: m.seat,
         actualSeat: m.actualSeat,
         fromTable: m.fromTableId,
         toTable: m.toTableId
     }));
 
-    queueBotEvent('reshuffle', { seat, moves: summary });
+    queueBotEvent('reshuffle', { seats: seatsUsedList, moves: summary });
 
-    return { seat, moves: summary };
+    return { seats: seatsUsedList, moves: summary };
 }
 
 function manualReshuffleTables() {
     if (!isFullAdmin()) return;
     if (!confirm('Случайно пересадить игроков между столами?')) return;
 
-    const result = performTableReshuffle(false);
+    const seatsCount = Math.max(1, Number(state.tournament?.autoReshuffleSeatsCount ?? 1));
+    const result = performTableReshuffle(false, seatsCount);
 
     if (result) {
         const lines = result.moves.map(m => {
-            const note = m.actualSeat !== result.seat ? ` (было место ${m.actualSeat})` : '';
-            return `${m.name}: стол ${m.fromTable} → стол ${m.toTable}${note}`;
+            const note = m.actualSeat !== m.seat ? ` (было место ${m.actualSeat})` : '';
+            return `Место №${m.seat} — ${m.name}: стол ${m.fromTable} → стол ${m.toTable}${note}`;
         });
-        alert(`🎲 Пересадка (место №${result.seat}):\n\n${lines.join('\n')}`);
+        alert(`🎲 Пересадка:\n\n${lines.join('\n')}`);
     }
 }
 
@@ -3680,6 +3721,28 @@ function renderTournamentOverview() {
         </div>
 
         <div class="tournament-panel">
+            <h3>🎲 Автопересадка на перерывах</h3>
+            <p style="color:var(--text-muted); margin-bottom:12px;">
+                На выбранном количестве первых обычных перерывов сетка сама случайно
+                пересаживает игроков между столами (для баланса). На остальных перерывах
+                пересадку можно делать вручную кнопкой «🎲 Случайная пересадка» в Сетке.
+            </p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Автопересадка на первых N перерывах (0 — выключить)</label>
+                    <input type="number" id="tournamentAutoReshuffleBreaksInput" value="${Number(state.tournament.autoReshuffleBreaksCount ?? 2)}" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Мест пересаживать за раз</label>
+                    <input type="number" id="tournamentAutoReshuffleSeatsInput" value="${Number(state.tournament.autoReshuffleSeatsCount ?? 1)}" min="1">
+                </div>
+            </div>
+            <p style="color:var(--text-muted); font-size:13px; margin-top:8px;">
+                🎵 Музыку окончания перерыва можно загрузить в «Редактор» → «Настройки» → «Звуки».
+            </p>
+        </div>
+
+        <div class="tournament-panel">
             <h3>👁 Видимость для гостей</h3>
             <div class="form-group">
                 <button class="btn" id="tournamentGuestGridToggleBtn" style="width:100%;"></button>
@@ -3705,6 +3768,12 @@ function saveTournamentMainSettings(silent) {
     state.tournament.registrationLimit = parseInt($('tournamentRegistrationLimitInput').value) || 0;
     state.tournament.announcementEnabled = !!($('tournamentAnnouncementEnabledInput') && $('tournamentAnnouncementEnabledInput').checked);
     state.tournament.telegramNotify = !!($('tournamentTelegramNotifyInput') && $('tournamentTelegramNotifyInput').checked);
+    state.tournament.autoReshuffleBreaksCount = $('tournamentAutoReshuffleBreaksInput')
+        ? Math.max(0, parseInt($('tournamentAutoReshuffleBreaksInput').value) || 0)
+        : (state.tournament.autoReshuffleBreaksCount ?? 2);
+    state.tournament.autoReshuffleSeatsCount = $('tournamentAutoReshuffleSeatsInput')
+        ? Math.max(1, parseInt($('tournamentAutoReshuffleSeatsInput').value) || 1)
+        : (state.tournament.autoReshuffleSeatsCount ?? 1);
 
     state.grid.maxPlayersPerTable = state.tournament.maxPlayersPerTable;
 
@@ -4509,6 +4578,16 @@ function resetAll() {
     $('resetBtn').onclick = resetTimer;
     $('backBtn').onclick = prevLevel;
     $('forwardBtn').onclick = nextLevel;
+
+    if ($('breakBannerPauseBtn')) {
+        $('breakBannerPauseBtn').onclick = () => {
+            if (state.timer.isRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        };
+    }
     $('progressContainer').onclick = seekTimerByProgress;
 
     $('loginBtn').onclick = () => $('loginModal').classList.add('active');
