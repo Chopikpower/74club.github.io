@@ -622,7 +622,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 30px 20px;
+            padding: clamp(14px, 4vw, 30px);
             overflow-y: auto;
             text-align: center;
         }
@@ -631,13 +631,45 @@
             display: flex;
         }
 
+        .break-banner-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 6px;
+        }
+
+        .break-banner-pause-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: clamp(38px, 7vw, 54px);
+            height: clamp(38px, 7vw, 54px);
+            border-radius: 50%;
+            border: 2px solid #D4AF37;
+            background: rgba(212, 175, 55, 0.12);
+            color: #D4AF37;
+            font-size: clamp(16px, 3vw, 24px);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform .15s ease, background .15s ease;
+        }
+
+        .break-banner-pause-btn:hover {
+            background: rgba(212, 175, 55, 0.25);
+            transform: scale(1.08);
+        }
+
+        .break-banner-pause-btn:active {
+            transform: scale(0.95);
+        }
+
         .break-banner-title {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: clamp(32px, 6vw, 60px);
+            font-size: clamp(28px, 6vw, 60px);
             letter-spacing: 0.04em;
             color: #D4AF37;
             text-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
-            margin-bottom: 6px;
         }
 
         .break-banner-countdown {
@@ -660,44 +692,63 @@
 
         .break-banner-subtitle {
             color: rgba(242, 230, 201, 0.7);
-            font-size: clamp(14px, 2vw, 18px);
-            margin-bottom: 24px;
+            font-size: clamp(13px, 2vw, 18px);
+            margin-bottom: clamp(14px, 3vw, 24px);
         }
 
         .break-banner-tables {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 200px));
+            gap: clamp(10px, 2.5vw, 18px);
             justify-content: center;
             max-width: 1100px;
+            width: 100%;
         }
 
         .break-banner-table {
-            background: rgba(255, 255, 255, 0.05);
+            background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
             border: 1px solid rgba(212, 175, 55, 0.35);
             border-radius: 14px;
-            padding: 14px 20px;
-            min-width: 170px;
+            padding: clamp(10px, 2.5vw, 16px) clamp(12px, 3vw, 20px);
             text-align: left;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
         }
 
         .break-banner-table h4 {
             color: #D4AF37;
             margin: 0 0 8px;
-            font-size: 17px;
+            font-size: clamp(14px, 2.6vw, 17px);
             font-family: 'Bebas Neue', sans-serif;
             letter-spacing: 0.03em;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+            padding-bottom: 6px;
         }
 
         .break-banner-table .player-row {
-            padding: 2px 0;
-            font-size: 14px;
+            padding: 3px 0;
+            font-size: clamp(12px, 2.4vw, 14px);
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.35;
         }
 
         .break-banner-table .player-row.reshuffled {
             color: #D4AF37;
             font-weight: 700;
             text-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+        }
+
+        @media (max-width: 420px) {
+            .break-banner-tables {
+                grid-template-columns: 1fr 1fr;
+                max-width: 340px;
+            }
+        }
+
+        @media (max-width: 320px) {
+            .break-banner-tables {
+                grid-template-columns: 1fr;
+            }
         }
 
         .level-display {
@@ -1171,11 +1222,12 @@
             cursor: pointer;
             transition: all 0.3s;
             text-align: center;
-            padding: 8px;
+            padding: clamp(3px, 1vw, 8px);
             transform: translate(-50%, -50%);
             z-index: 10;
-            min-width: 80px;
-            min-height: 80px;
+            width: clamp(48px, 15vw, 80px);
+            height: clamp(48px, 15vw, 80px);
+            box-sizing: border-box;
         }
 
         .table-seat:hover {
@@ -1191,21 +1243,25 @@
         }
 
         .seat-number {
-            font-size: 14px;
+            font-size: clamp(9px, 2.6vw, 14px);
             color: var(--warning-color);
             font-weight: bold;
-            line-height: 1.2;
+            line-height: 1.15;
         }
 
         .seat-name {
             font-weight: bold;
-            font-size: 11px;
+            font-size: clamp(7px, 2.1vw, 11px);
             color: white;
-            line-height: 1.2;
-            max-width: 70px;
+            line-height: 1.15;
+            max-width: 92%;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .seat-chips {
@@ -1763,11 +1819,6 @@
                 width: 100%;
             }
 
-            .table-seat {
-                min-width: 52px;
-                min-height: 52px;
-            }
-
             .admin-tabs {
                 flex-direction: column;
             }
@@ -1785,16 +1836,6 @@
 
             .blinds-display {
                 font-size: 36px;
-            }
-
-            .table-seat {
-                min-width: 60px;
-                min-height: 60px;
-            }
-
-            .seat-name {
-                font-size: 9px;
-                max-width: 50px;
             }
 
             .rating-item {
@@ -2378,7 +2419,10 @@
 
     <div class="page" id="timerPage">
         <div class="break-banner" id="breakBanner">
-            <div class="break-banner-title" id="breakBannerTitle">⏸ ПЕРЕРЫВ</div>
+            <div class="break-banner-header">
+                <button class="break-banner-pause-btn" id="breakBannerPauseBtn" title="Пауза / Продолжить">⏸</button>
+                <div class="break-banner-title" id="breakBannerTitle">ПЕРЕРЫВ</div>
+            </div>
             <div class="break-banner-countdown" id="breakBannerCountdown">05:00</div>
             <div class="break-banner-subtitle">Пересадка / расположение столов</div>
             <div class="break-banner-tables" id="breakBannerTables"></div>
