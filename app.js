@@ -786,7 +786,8 @@ function makeGridData() {
         maxPlayersPerTable: state.grid.maxPlayersPerTable,
         gridCreated: state.grid.gridCreated,
         eliminationOrder: state.grid.eliminationOrder,
-        tournamentEnded: state.grid.tournamentEnded
+        tournamentEnded: state.grid.tournamentEnded,
+        lastReshuffle: state.grid.lastReshuffle || null
     };
 }
 
@@ -797,6 +798,7 @@ function applyGridData(data) {
     state.grid.gridCreated = !!data.gridCreated;
     state.grid.eliminationOrder = data.eliminationOrder || [];
     state.grid.tournamentEnded = !!data.tournamentEnded;
+    state.grid.lastReshuffle = data.lastReshuffle || null;
 }
 
 function makeSettingsData() {
