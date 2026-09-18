@@ -3357,8 +3357,8 @@ function renderTemplatesList() {
                     <p>${t.levels.length} уровней • ${t.levelDuration} мин/уровень</p>
                 </div>
                 <div class="template-item-actions">
-                    <button class="btn ${active ? 'btn-secondary' : 'btn-success'}" onclick="useTemplate('${name}')">${active ? 'Используется' : 'Использовать'}</button>
-                    <button class="btn btn-secondary" onclick="editTemplate('${name}')"✏️ Изменить</button>
+                    <button class="btn ${active ? 'btn-active-template' : 'btn-success'}" onclick="useTemplate('${name}')">${active ? '✓ Используется' : 'Использовать'}</button>
+                    <button class="btn btn-secondary" onclick="editTemplate('${name}')">✏️ ред.</button>
                     <button class="btn btn-secondary" onclick="exportSpecificTemplate('${name}')">📥 Экспорт</button>
                     ${Object.keys(state.templates).length > 1 ? `<button class="btn btn-danger" onclick="deleteTemplate('${name}')">🗑️</button>` : ''}
                 </div>
