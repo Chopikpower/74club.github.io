@@ -94,6 +94,12 @@ const state = {
 
     currentTemplate: 'Стандарт',
 
+    // Какой шаблон сейчас открыт для просмотра/правки в «Редакторе»
+    // (вкладка «Шаблоны»). Отдельно от currentTemplate (реально
+    // играющего шаблона) — иначе просмотр чужого шаблона тихо
+    // подменял бы играющий турнир.
+    editorTemplateName: null,
+
     settings: {
         adminPassword: 'secret',
         primaryColor: '#00bfff',
@@ -180,6 +186,17 @@ function escapeHtml(text) {
 
 function currentTemplate() {
     return state.templates[state.currentTemplate];
+}
+
+/**
+ * Шаблон, который сейчас открыт для правки в «Редакторе» (вкладка
+ * «Шаблоны» → «✏️ Изменить»). Специально ОТДЕЛЁН от currentTemplate() —
+ * иначе простой просмотр/правка чужого (неактивного) шаблона тихо
+ * подменяла бы реально играющий шаблон турнира при следующей
+ * же автосохранении таймера.
+ */
+function editingTemplate() {
+    return state.templates[state.editorTemplateName || state.currentTemplate];
 }
 
 /**
@@ -3131,9 +3148,9 @@ function renderLevelsTable() {
     const tbody = $('levelsTableBody');
     if (!tbody) return;
 
-    const t = currentTemplate();
+    const t = editingTemplate();
 
-    $('editingTemplateName').textContent = state.currentTemplate;
+    $('editingTemplateName').textContent = state.editorTemplateName || state.currentTemplate;
     $('levelDuration').value = t.levelDuration;
     $('breakDuration').value = t.breakDuration;
     $('breakEveryNLevels').value = t.breakEveryNLevels;
@@ -3177,7 +3194,7 @@ function renderLevelsTable() {
 function updateLevel(index, field, value) {
     if (!isFullAdmin()) return;
 
-    const t = currentTemplate();
+    const t = editingTemplate();
 
     if (field === 'duration') {
         const minutes = parseInt(value) || t.levels[index].duration || t.levelDuration || 15;
@@ -3203,7 +3220,7 @@ function handleLevelSoundUpload(index, inputEl) {
     const reader = new FileReader();
 
     reader.onload = (e) => {
-        currentTemplate().levels[index].sound = e.target.result;
+        editingTemplate().levels[index].sound = e.target.result;
         renderLevelsTable();
         renderTournamentLevelsTable();
     };
@@ -3220,7 +3237,7 @@ function setLevelSoundPath(index, path) {
 
     path = (path || '').trim();
 
-    currentTemplate().levels[index].sound = path || null;
+    editingTemplate().levels[index].sound = path || null;
 
     renderLevelsTable();
     renderTournamentLevelsTable();
@@ -3229,7 +3246,7 @@ function setLevelSoundPath(index, path) {
 function resetLevelSound(index) {
     if (!isFullAdmin()) return;
 
-    currentTemplate().levels[index].sound = null;
+    editingTemplate().levels[index].sound = null;
     renderLevelsTable();
     renderTournamentLevelsTable();
 }
@@ -3237,7 +3254,7 @@ function resetLevelSound(index) {
 function deleteLevel(index) {
     if (!isFullAdmin()) return;
 
-    const t = currentTemplate();
+    const t = editingTemplate();
 
     if (t.levels.length <= 1) {
         alert('Должен остаться хотя бы один уровень');
@@ -3253,7 +3270,7 @@ function deleteLevel(index) {
 function addLevel() {
     if (!isFullAdmin()) return;
 
-    const t = currentTemplate();
+    const t = editingTemplate();
     const last = t.levels[t.levels.length - 1];
 
     t.levels.push({
@@ -3271,7 +3288,7 @@ function addLevel() {
 function saveLevels() {
     if (!isFullAdmin()) return;
 
-    const t = currentTemplate();
+    const t = editingTemplate();
 
     t.levelDuration = parseInt($('levelDuration').value) || 15;
     t.breakDuration = parseInt($('breakDuration').value) || 0;
@@ -3279,7 +3296,16 @@ function saveLevels() {
     t.bigBreakAfterLevel = parseInt($('bigBreakAfterLevel').value) || 0;
     t.bigBreakDuration = parseInt($('bigBreakDuration').value) || 20;
 
-    applyTemplateToTimer();
+    const isEditingActiveTemplate = !state.editorTemplateName || state.editorTemplateName === state.currentTemplate;
+
+    if (isEditingActiveTemplate) {
+        // Это активный (играющий) шаблон — применяем к таймеру как раньше.
+        applyTemplateToTimer();
+    } else {
+        // Редактировали НЕ активный шаблон — просто сохраняем структуру
+        // уровней в облако, играющий сейчас таймер не трогаем и не сбрасываем.
+        saveTimerState();
+    }
 
     alert('Уровни сохранены');
 }
@@ -3344,13 +3370,20 @@ function renderTemplatesList() {
 }
 
 function useTemplate(name) {
+    if (!isFullAdmin()) return;
+
     state.currentTemplate = name;
+    state.editorTemplateName = name;
     renderTemplatesList();
     applyTemplateToTimer();
 }
 
 function editTemplate(name) {
-    state.currentTemplate = name;
+    // Только открывает шаблон для просмотра/правки уровней — НЕ делает
+    // его активным (играющим). Раньше это меняло state.currentTemplate
+    // напрямую, из-за чего простой просмотр чужого шаблона тихо
+    // подменял реально играющий турнир при следующем автосохранении.
+    state.editorTemplateName = name;
     renderLevelsTable();
     document.querySelector('[data-tab="levels"]').click();
 }
@@ -3363,10 +3396,24 @@ function deleteTemplate(name) {
     if (!confirm(`Удалить шаблон "${name}"?`)) return;
 
     delete state.templates[name];
-    state.currentTemplate = Object.keys(state.templates)[0];
+
+    const wasActive = state.currentTemplate === name;
+
+    if (wasActive) {
+        state.currentTemplate = Object.keys(state.templates)[0];
+    }
+
+    if (state.editorTemplateName === name) {
+        state.editorTemplateName = null;
+    }
 
     renderTemplatesList();
-    applyTemplateToTimer();
+
+    if (wasActive) {
+        applyTemplateToTimer();
+    } else {
+        saveTimerState();
+    }
 }
 
 function exportSpecificTemplate(name) {
@@ -3405,9 +3452,12 @@ function importTemplate() {
                     levels: data.levels || []
                 };
 
-                state.currentTemplate = name;
+                // Просто добавляем в список и открываем для просмотра —
+                // НЕ делаем активным и не трогаем играющий таймер.
+                // Чтобы реально начать им играть — нужна кнопка «Использовать».
+                state.editorTemplateName = name;
                 renderTemplatesList();
-                applyTemplateToTimer();
+                saveTimerState();
 
                 alert('Шаблон импортирован');
             } catch (err) {
@@ -3441,9 +3491,12 @@ function newTemplate() {
         ]
     };
 
-    state.currentTemplate = name;
+    // Просто добавляем в список и открываем для просмотра — НЕ делаем
+    // активным и не трогаем играющий таймер. Чтобы реально начать им
+    // играть — нужна кнопка «Использовать».
+    state.editorTemplateName = name;
     renderTemplatesList();
-    applyTemplateToTimer();
+    saveTimerState();
 }
 
 /************************************************************
