@@ -1360,6 +1360,11 @@ function updateBreakBanner() {
         pauseBtn.textContent = state.timer.isRunning ? '⏸' : '▶';
     }
 
+    const skipBtn = $('breakBannerSkipBtn');
+    if (skipBtn) {
+        skipBtn.style.display = isFullAdmin() ? 'inline-flex' : 'none';
+    }
+
     const remaining = Math.max(0, Number(state.timer.timeRemaining) || 0);
     const countdownEl = $('breakBannerCountdown');
 
@@ -4586,6 +4591,14 @@ function resetAll() {
             } else {
                 startTimer();
             }
+        };
+    }
+
+    if ($('breakBannerSkipBtn')) {
+        $('breakBannerSkipBtn').onclick = () => {
+            if (!isFullAdmin()) return;
+            if (!confirm('Пропустить перерыв и перейти к игре?')) return;
+            nextLevel();
         };
     }
     $('progressContainer').onclick = seekTimerByProgress;
