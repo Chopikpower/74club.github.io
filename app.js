@@ -804,7 +804,8 @@ function makeGridData() {
         gridCreated: state.grid.gridCreated,
         eliminationOrder: state.grid.eliminationOrder,
         tournamentEnded: state.grid.tournamentEnded,
-        lastReshuffle: state.grid.lastReshuffle || null
+        lastReshuffle: state.grid.lastReshuffle || null,
+        movedPlayerIds: state.grid.movedPlayerIds || []
     };
 }
 
@@ -816,6 +817,7 @@ function applyGridData(data) {
     state.grid.eliminationOrder = data.eliminationOrder || [];
     state.grid.tournamentEnded = !!data.tournamentEnded;
     state.grid.lastReshuffle = data.lastReshuffle || null;
+    state.grid.movedPlayerIds = Array.isArray(data.movedPlayerIds) ? data.movedPlayerIds : [];
 }
 
 function makeSettingsData() {
@@ -1563,6 +1565,10 @@ function createGrid() {
 
     state.grid.maxPlayersPerTable = parseInt($('maxPlayersPerTable').value) || 6;
 
+    // Новая сетка — новый круг пересадок.
+    state.grid.movedPlayerIds = [];
+    state.grid.lastReshuffle = null;
+
     let players = shuffleArray(state.grid.players);
     players = shuffleArray(players);
     players = shuffleArray(players);
@@ -2223,48 +2229,86 @@ function performTableReshuffle(silent, seatsCount) {
     const count = Math.max(1, Math.min(Number(seatsCount) || 1, maxSeat));
     const sortedTables = [...tables].sort((a, b) => String(a.id).localeCompare(String(b.id), 'ru', { numeric: true }));
 
+    // «Круг» пересадок: кто уже пересаживался в текущем круге, тот больше
+    // не выбирается, пока не пересадили остальных. Если подходящих не
+    // хватает — начинается новый круг (список сбрасывается).
+    const cycleSet = new Set((state.grid.movedPlayerIds || []).map(String));
+    let startedNewCycle = false;
+
     const usedSeats = new Set();
     const allMoves = [];
     const movedPlayerIds = [];
     const seatsUsedList = [];
 
-    for (let attempt = 0; attempt < count; attempt++) {
-        const available = [];
-        for (let s = 1; s <= maxSeat; s++) {
-            if (!usedSeats.has(s)) available.push(s);
-        }
-        if (available.length === 0) break;
+    // Порядок поиска игрока за столом: выпавшее место, затем вниз
+    // (5, 4, 3...), а если там пусто — «по кругу» сверху (макс...K+1).
+    const seatSearchOrder = (seat) => {
+        const order = [];
+        for (let s = seat; s >= 1; s--) order.push(s);
+        for (let s = maxSeat; s > seat; s--) order.push(s);
+        return order;
+    };
 
-        const seat = available[Math.floor(Math.random() * available.length)];
-        usedSeats.add(seat);
-
-        // На каждом столе отдельно ищем игрока начиная с выпавшего
-        // места и спускаясь вниз (5, 4, 3...), пока не найдём занятое
-        // место — так стол не выпадает из пересадки просто потому,
-        // что именно это место у него пустое. Игроков, которых уже
-        // пересадило на предыдущем месте в этой же операции, не трогаем.
+    // На каждом столе отдельно ищем игрока для этого места. Не берём:
+    // выбывших, уже пересаженных в этой операции и (если respectCycle)
+    // уже пересаженных в текущем круге.
+    const findOccupied = (seat, respectCycle) => {
         const occupied = [];
-        sortedTables.forEach((table, idx) => {
-            let foundPlayer = null;
-            let actualSeat = null;
+        const order = seatSearchOrder(seat);
 
-            for (let s = seat; s >= 1; s--) {
+        sortedTables.forEach((table, idx) => {
+            for (const s of order) {
                 const p = table.players.find(pl =>
-                    Number(pl.seatNumber) === s && !pl.eliminated && !movedPlayerIds.includes(pl.id)
+                    Number(pl.seatNumber) === s &&
+                    !pl.eliminated &&
+                    !movedPlayerIds.includes(pl.id) &&
+                    (!respectCycle || !cycleSet.has(String(pl.id)))
                 );
                 if (p) {
-                    foundPlayer = p;
-                    actualSeat = s;
+                    occupied.push({ tableIdx: idx, player: p, actualSeat: s });
                     break;
                 }
             }
-
-            if (foundPlayer) {
-                occupied.push({ tableIdx: idx, player: foundPlayer, actualSeat });
-            }
         });
 
-        if (occupied.length < 2) continue;
+        return occupied;
+    };
+
+    for (let attempt = 0; attempt < count; attempt++) {
+        const candidateSeats = shuffleArray([...Array(maxSeat).keys()].map(i => i + 1).filter(s => !usedSeats.has(s)));
+        if (candidateSeats.length === 0) break;
+
+        let seat = null;
+        let occupied = [];
+
+        // 1) Ищем место, где хватает ещё не пересаживавшихся игроков.
+        for (const cand of candidateSeats) {
+            const found = findOccupied(cand, true);
+            if (found.length >= 2) {
+                seat = cand;
+                occupied = found;
+                break;
+            }
+        }
+
+        // 2) Не нашли — все уже пересаживались: начинаем новый круг.
+        if (!seat) {
+            cycleSet.clear();
+            startedNewCycle = true;
+
+            for (const cand of candidateSeats) {
+                const found = findOccupied(cand, false);
+                if (found.length >= 2) {
+                    seat = cand;
+                    occupied = found;
+                    break;
+                }
+            }
+        }
+
+        if (!seat) continue;
+
+        usedSeats.add(seat);
 
         const moves = occupied.map((o, i) => {
             const toTableIdx = occupied[(i + 1) % occupied.length].tableIdx;
@@ -2275,6 +2319,9 @@ function performTableReshuffle(silent, seatsCount) {
                 fromTableId: sortedTables[o.tableIdx].id,
                 toTableId: sortedTables[toTableIdx].id,
                 actualSeat: o.actualSeat,
+                // Приезжающий садится на место, которое освободил
+                // уезжающий с этого стола, — так номера мест не задваиваются.
+                newSeat: occupied[(i + 1) % occupied.length].actualSeat,
                 seat
             };
         });
@@ -2284,16 +2331,16 @@ function performTableReshuffle(silent, seatsCount) {
             sortedTables[o.tableIdx].players = sortedTables[o.tableIdx].players.filter(p => p.id !== o.player.id);
         });
 
-        // ...и рассаживаем на новые столы. Место K на столе-получателе к
-        // этому моменту гарантированно свободно: либо его занимал тот,
-        // кто сам уже уехал дальше по цепочке, либо оно и так было пустым.
+        // ...и рассаживаем на новые столы — каждый занимает место,
+        // которое освободил уезжающий с этого стола.
         moves.forEach(m => {
-            sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: seat });
+            sortedTables[m.toTableIdx].players.push({ ...m.player, seatNumber: m.newSeat });
         });
 
         moves.forEach(m => {
             allMoves.push(m);
             movedPlayerIds.push(m.player.id);
+            cycleSet.add(String(m.player.id));
         });
         seatsUsedList.push(seat);
     }
@@ -2307,13 +2354,14 @@ function performTableReshuffle(silent, seatsCount) {
     // полноэкранном баннере перерыва (видно всем, не только админу,
     // т.к. это часть общих данных сетки).
     state.grid.lastReshuffle = { seats: seatsUsedList, playerIds: movedPlayerIds };
+    state.grid.movedPlayerIds = [...cycleSet];
 
     renderTables();
     saveGridData();
 
     const summary = allMoves.map(m => ({
         name: m.player.name,
-        seat: m.seat,
+        seat: m.newSeat,
         actualSeat: m.actualSeat,
         fromTable: m.fromTableId,
         toTable: m.toTableId
@@ -2321,7 +2369,7 @@ function performTableReshuffle(silent, seatsCount) {
 
     queueBotEvent('reshuffle', { seats: seatsUsedList, moves: summary });
 
-    return { seats: seatsUsedList, moves: summary };
+    return { seats: seatsUsedList, moves: summary, newCycle: startedNewCycle };
 }
 
 function manualReshuffleTables() {
@@ -2336,7 +2384,8 @@ function manualReshuffleTables() {
             const note = m.actualSeat !== m.seat ? ` (было место ${m.actualSeat})` : '';
             return `Место №${m.seat} — ${m.name}: стол ${m.fromTable} → стол ${m.toTable}${note}`;
         });
-        alert(`🎲 Пересадка:\n\n${lines.join('\n')}`);
+        const cycleNote = result.newCycle ? '\n\n🔄 Все уже пересаживались — начат новый круг.' : '';
+        alert(`🎲 Пересадка:\n\n${lines.join('\n')}${cycleNote}`);
     }
 }
 
@@ -4290,6 +4339,7 @@ function clearTournamentPlayers() {
     state.grid.gridCreated = false;
     state.grid.eliminationOrder = [];
     state.grid.tournamentEnded = false;
+    state.grid.movedPlayerIds = [];
     state.ui.participantListManualOverride = null;
 
     // Ручные правки очков относились к прошлому турниру — сбрасываем.
@@ -4683,6 +4733,7 @@ function resetAll() {
     state.grid.gridCreated = false;
     state.grid.eliminationOrder = [];
     state.grid.tournamentEnded = false;
+    state.grid.movedPlayerIds = [];
 
     state.tournament.manualPoints = {};
     saveSettingsData();
