@@ -926,6 +926,56 @@ function finishTimer() {
     updateTimerDisplay();
 }
 
+/**
+ * Порядковый номер перерыва, который начинается после указанного
+ * уровня. Обычные перерывы и большой считаются вместе, в порядке
+ * следования: 1-й перерыв, 2-й перерыв и т.д. 0 — если после этого
+ * уровня перерыва нет.
+ */
+function getBreakOrdinalAfterLevel(level) {
+    const t = currentTemplate();
+    const last = Number(level);
+    const bigAfter = Number(t.bigBreakAfterLevel) || 0;
+    const every = Number(t.breakEveryNLevels) || 0;
+    const regularOn = Number(t.breakDuration) > 0 && every > 0;
+
+    let ordinal = 0;
+
+    for (let l = 1; l <= last; l++) {
+        const isBig = bigAfter > 0 && l === bigAfter;
+        const isRegular = !isBig && regularOn && l % every === 0;
+
+        if (isBig || isRegular) ordinal++;
+    }
+
+    return ordinal;
+}
+
+/**
+ * Автопересадка в начале перерыва (и обычного, и большого): срабатывает
+ * на первых N перерывах подряд, дальше — только вручную кнопкой.
+ * N и число мест за раз настраиваются в разделе «Турнир».
+ */
+function maybeAutoReshuffleOnBreak() {
+    if (!isFullAdmin() || !state.grid.gridCreated) return;
+
+    const breakNumber = getBreakOrdinalAfterLevel(state.timer.currentLevel);
+    const limit = Number(state.tournament?.autoReshuffleBreaksCount ?? 2);
+    const seats = Math.max(1, Number(state.tournament?.autoReshuffleSeatsCount ?? 1));
+
+    if (breakNumber >= 1 && breakNumber <= limit) {
+        performTableReshuffle(true, seats);
+    }
+}
+
+/** Снимает подсветку «кого пересадило» (пишет только реальный админ). */
+function clearReshuffleMarks() {
+    if (isFullAdmin() && state.grid.lastReshuffle) {
+        state.grid.lastReshuffle = null;
+        saveGridData();
+    }
+}
+
 function moveToNextStage(baseTime = now()) {
     const t = currentTemplate();
     const totalLevels = t.levels.length;
@@ -942,6 +992,9 @@ function moveToNextStage(baseTime = now()) {
         state.timer.isBreak = false;
         state.timer.breakType = null;
         setStageDuration(getLevelSeconds(t, next), baseTime);
+
+        // Перерыв закончился — подсветка «кого пересадило» больше не нужна.
+        clearReshuffleMarks();
         return;
     }
 
@@ -954,6 +1007,10 @@ function moveToNextStage(baseTime = now()) {
         state.timer.isBreak = true;
         state.timer.breakType = 'big';
         setStageDuration(t.bigBreakDuration * 60, baseTime);
+
+        // Большой перерыв тоже считается перерывом для автопересадки.
+        clearReshuffleMarks();
+        maybeAutoReshuffleOnBreak();
         return;
     }
 
@@ -962,18 +1019,8 @@ function moveToNextStage(baseTime = now()) {
         state.timer.breakType = 'regular';
         setStageDuration(t.breakDuration * 60, baseTime);
 
-        // Автопересадка — на первых N обычных перерывах (настраивается
-        // в разделе «Турнир»), дальше админ делает это вручную кнопкой.
-        const breakNumber = t.breakEveryNLevels > 0
-            ? Math.round(Number(state.timer.currentLevel) / Number(t.breakEveryNLevels))
-            : 0;
-        const autoBreaksLimit = Number(state.tournament?.autoReshuffleBreaksCount ?? 2);
-        const seatsPerReshuffle = Math.max(1, Number(state.tournament?.autoReshuffleSeatsCount ?? 1));
-
-        if (isFullAdmin() && state.grid.gridCreated && breakNumber >= 1 && breakNumber <= autoBreaksLimit) {
-            performTableReshuffle(true, seatsPerReshuffle);
-        }
-
+        clearReshuffleMarks();
+        maybeAutoReshuffleOnBreak();
         return;
     }
 
@@ -981,14 +1028,6 @@ function moveToNextStage(baseTime = now()) {
     state.timer.isBreak = false;
     state.timer.breakType = null;
     setStageDuration(getLevelSeconds(t, state.timer.currentLevel), baseTime);
-
-    // Перерыв закончился — подсветка "кого пересадило" больше не
-    // актуальна для следующего перерыва, убираем (пишет только
-    // реальный админ, чтобы гости не слали свою копию в облако).
-    if (isFullAdmin() && state.grid.lastReshuffle) {
-        state.grid.lastReshuffle = null;
-        saveGridData();
-    }
 }
 
 function playStageSound() {
@@ -3917,8 +3956,9 @@ function renderTournamentOverview() {
         <div class="tournament-panel">
             <h3>🎲 Автопересадка на перерывах</h3>
             <p style="color:var(--text-muted); margin-bottom:12px;">
-                На выбранном количестве первых обычных перерывов сетка сама случайно
-                пересаживает игроков между столами (для баланса). На остальных перерывах
+                На выбранном количестве первых перерывов (обычных и большого — считаются
+                вместе, по порядку) сетка сама случайно пересаживает игроков между
+                столами (для баланса). На остальных перерывах
                 пересадку можно делать вручную кнопкой «🎲 Случайная пересадка» в Сетке.
             </p>
             <div class="form-row">
