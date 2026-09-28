@@ -2676,6 +2676,12 @@ function renderRating(targetId = 'ratingList') {
     const list = $(targetId);
     if (!list) return;
 
+    // Если админ прямо сейчас вводит очки — не затираем поле перерисовкой.
+    const focused = document.activeElement;
+    if (targetId === 'ratingList' && focused && list.contains(focused) && focused.tagName === 'INPUT') {
+        return;
+    }
+
     list.innerHTML = '';
 
     const isScreenshot = targetId !== 'ratingList';
@@ -2706,9 +2712,13 @@ function renderRating(targetId = 'ratingList') {
 
     const places = [...state.settings.prizePlaces].sort((a, b) => Number(a.place) - Number(b.place));
 
+    const canEdit = !isScreenshot && isFullAdmin();
+
     places.forEach(prize => {
         const place = Number(prize.place);
-        const points = Math.round(totalChips * prize.percentage / 100);
+        const autoPoints = Math.round(totalChips * prize.percentage / 100);
+        const manual = getManualPoints(place);
+        const points = manual !== null ? manual : autoPoints;
         const player = playersByPlace[place];
 
         const item = document.createElement('div');
@@ -2718,14 +2728,89 @@ function renderRating(targetId = 'ratingList') {
         if (place === 2) item.style.background = 'rgba(192, 192, 192, 0.1)';
         if (place === 3) item.style.background = 'rgba(205, 127, 50, 0.1)';
 
+        const pointsHtml = canEdit
+            ? `<div class="rating-points rating-points-edit">
+                   <input type="number" min="0" step="1" class="rating-points-input"
+                       value="${points}"
+                       title="Авто: ${autoPoints}"
+                       onchange="setManualPoints(${place}, this.value, ${autoPoints})">
+                   <span>очков</span>
+                   ${manual !== null
+                       ? `<button class="btn btn-secondary btn-small" title="Вернуть авто-значение (${autoPoints})" onclick="resetManualPoints(${place})">↺</button>`
+                       : ''}
+               </div>`
+            : `<div class="rating-points">${points} очков</div>`;
+
         item.innerHTML = `
             <div class="rating-position">${place}</div>
             <div class="rating-name">${player ? escapeHtml(player.name) : '—'}</div>
-            <div class="rating-points">${points} очков</div>
+            ${pointsHtml}
         `;
 
         list.appendChild(item);
     });
+
+    if (canEdit) {
+        const hint = document.createElement('p');
+        hint.className = 'rating-edit-hint';
+        hint.textContent = 'Очки можно править вручную (например, округлить). Сумма не обязана совпадать с призовым фондом — остаток просто не учитывается.';
+        list.appendChild(hint);
+    }
+}
+
+/************************************************************
+ * РУЧНАЯ ПРАВКА ОЧКОВ НА СТРАНИЦЕ «РЕЗУЛЬТАТЫ»
+ *
+ * Админ может поменять очки за любое призовое место. Правки
+ * лежат в state.tournament.manualPoints ({ "1": 16000, ... }) и
+ * синхронизируются со всеми вместе с настройками турнира. Никакой
+ * проверки суммы нет — если вручную вычли 2000, остаток никуда не
+ * перераспределяется и никаких предупреждений не будет.
+ ************************************************************/
+
+function getManualPoints(place) {
+    const map = state.tournament && state.tournament.manualPoints;
+    if (!map) return null;
+
+    const v = map[String(place)];
+    if (v === undefined || v === null || v === '') return null;
+
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+
+function setManualPoints(place, value, autoPoints) {
+    if (!isFullAdmin()) return;
+
+    const n = Math.max(0, Math.round(Number(value)));
+
+    if (!state.tournament.manualPoints) state.tournament.manualPoints = {};
+
+    if (!Number.isFinite(n) || n === Number(autoPoints)) {
+        // Совпало с авто-значением (или ввели мусор) — правка не нужна.
+        delete state.tournament.manualPoints[String(place)];
+    } else {
+        state.tournament.manualPoints[String(place)] = n;
+    }
+
+    saveSettingsData();
+
+    if (document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+    }
+
+    renderRating();
+}
+
+function resetManualPoints(place) {
+    if (!isFullAdmin()) return;
+
+    if (state.tournament.manualPoints) {
+        delete state.tournament.manualPoints[String(place)];
+    }
+
+    saveSettingsData();
+    renderRating();
 }
 
 function saveRatingAsJpg() {
@@ -4207,6 +4292,10 @@ function clearTournamentPlayers() {
     state.grid.tournamentEnded = false;
     state.ui.participantListManualOverride = null;
 
+    // Ручные правки очков относились к прошлому турниру — сбрасываем.
+    state.tournament.manualPoints = {};
+    saveSettingsData();
+
     saveGridData();
     renderPlayerList();
     renderTables();
@@ -4559,6 +4648,7 @@ function updateAdminUI() {
     }
 
     renderPlayerList();
+    renderRating();
 
     if (state.currentPage === 'rulesPage') {
         renderRulesPage();
@@ -4593,6 +4683,9 @@ function resetAll() {
     state.grid.gridCreated = false;
     state.grid.eliminationOrder = [];
     state.grid.tournamentEnded = false;
+
+    state.tournament.manualPoints = {};
+    saveSettingsData();
 
     saveGridData();
     renderPlayerList();
