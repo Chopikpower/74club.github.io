@@ -1481,6 +1481,38 @@
             text-align: right;
         }
 
+        .rating-points-edit {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            min-width: 120px;
+        }
+
+        .rating-points-input {
+            width: 110px;
+            padding: 6px 8px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: right;
+            color: var(--success-color);
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .rating-points-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .rating-edit-hint {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
         .rating-actions {
             display: flex;
             justify-content: center;
@@ -1860,6 +1892,10 @@
 
             .rating-points {
                 text-align: center;
+            }
+
+            .rating-points-edit {
+                justify-content: center;
             }
         }
 	/* ================================
